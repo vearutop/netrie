@@ -17,6 +17,7 @@ func TestNewCIDRTrie(t *testing.T) {
 		{"192.168.1.0/24", 1},
 		{"192.168.0.0/16", 2},
 		{"10.0.0.0/8", 3},
+		{"2001:db8::/32", 4},
 	}
 
 	for _, c := range cidrs {
@@ -34,6 +35,7 @@ func TestNewCIDRTrie(t *testing.T) {
 		{"10.0.0.1", 3},
 		{"172.16.0.1", -1},
 		{"10.0.1.52", 3},
+		{"2001:db8::1", 4},
 		{"invalid", -1},
 	} {
 		id := trie.Lookup(tc.ip)

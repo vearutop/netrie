@@ -44,6 +44,8 @@ func BenchmarkAddAppleICloudPrivateRelay(b *testing.B) {
 		b.Errorf("Error adding AppleICloudPrivateRelay: %v\n", err)
 	}
 
+	println(tr.Len(), "nets")
+
 	b.ResetTimer()
 	b.ReportAllocs()
 
@@ -130,11 +132,11 @@ func addAppleICloudPrivateRelay(tr cidranger.Ranger, id int16) error {
 		if err != nil {
 			return fmt.Errorf("invalid CIDR: %v", record[0])
 		}
-
-		// Skip IPv6.
-		if ipNet.IP.To4() == nil {
-			continue
-		}
+		//
+		//Skip IPv6.
+		//if ipNet.IP.To4() == nil {
+		//	continue
+		//}
 
 		if err := tr.Insert(cidranger.NewBasicRangerEntry(*ipNet)); err != nil {
 			return err

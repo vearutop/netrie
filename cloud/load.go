@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 
@@ -133,16 +132,6 @@ func loadFromJSONBruteForce(u string, tr *netrie.CIDRIndex, id int16) error {
 		u,
 		func(path []string, value interface{}) error {
 			if s, ok := value.(string); ok {
-				_, ipNet, err := net.ParseCIDR(s)
-				if err != nil {
-					return nil
-				}
-
-				// Skip IPv6.
-				if ipNet.IP.To4() == nil {
-					return nil
-				}
-
 				if err := tr.AddCIDR(s, id); err != nil {
 					if errors.Is(err, netrie.ErrOverlap) {
 						return nil
@@ -203,16 +192,6 @@ func loadFromText(u string, tr *netrie.CIDRIndex, id int16) error {
 		}
 
 		line = strings.SplitN(line, ",", 2)[0]
-
-		_, ipNet, err := net.ParseCIDR(line)
-		if err != nil {
-			return fmt.Errorf("invalid CIDR: %v", line)
-		}
-
-		// Skip IPv6.
-		if ipNet.IP.To4() == nil {
-			continue
-		}
 
 		if err := tr.AddCIDR(line, id); err != nil {
 			return err
