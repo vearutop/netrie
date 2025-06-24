@@ -40,5 +40,4 @@ func MakeAppleCIDRs() {
 	for _, n := range nets {
 		println(n.String())
 	}
-
 }

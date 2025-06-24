@@ -1,8 +1,9 @@
 package cloud_test
 
 import (
-	"github.com/vearutop/netrie/cloud"
 	"testing"
+
+	"github.com/vearutop/netrie/cloud"
 )
 
 func TestMakeAhrefsCIDRs(t *testing.T) {
