@@ -17,7 +17,7 @@ import (
 func TestAddAppleICloudPrivateRelay(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
 
-	if err := cloud.AddAppleICloudPrivateRelay(tr, 13); err != nil {
+	if err := cloud.AddAppleICloudPrivateRelay(tr); err != nil {
 		t.Errorf("Error adding AppleICloudPrivateRelay: %v\n", err)
 	}
 
@@ -30,7 +30,7 @@ func TestAddAppleICloudPrivateRelay(t *testing.T) {
 func TestAddAWS(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
 
-	if err := cloud.AddAWS(tr, 12); err != nil {
+	if err := cloud.AddAWS(tr); err != nil {
 		t.Errorf("Error adding AWS: %v\n", err)
 	}
 
@@ -40,7 +40,7 @@ func TestAddAWS(t *testing.T) {
 func BenchmarkAddAppleICloudPrivateRelay(b *testing.B) {
 	tr := netrie.NewCIDRIndex()
 
-	if err := cloud.AddAppleICloudPrivateRelay(tr, 13); err != nil {
+	if err := cloud.AddAppleICloudPrivateRelay(tr); err != nil {
 		b.Errorf("Error adding AppleICloudPrivateRelay: %v\n", err)
 	}
 
@@ -51,9 +51,8 @@ func BenchmarkAddAppleICloudPrivateRelay(b *testing.B) {
 
 	ip := net.ParseIP("172.224.227.36").To4()
 
-	var v int16
 	for i := 0; i < b.N; i++ {
-		v += tr.LookupIP(ip)
+		_ = tr.LookupIP(ip)
 	}
 
 	ms := runtime.MemStats{}
@@ -61,14 +60,13 @@ func BenchmarkAddAppleICloudPrivateRelay(b *testing.B) {
 
 	println(ms.HeapAlloc)
 
-	v += tr.Lookup("172.224.227.36")
-	_ = v
+	println(tr.Lookup("172.224.227.36"))
 }
 
 func BenchmarkCidranger(b *testing.B) {
 	ranger := cidranger.NewPCTrieRanger()
 
-	if err := addAppleICloudPrivateRelay(ranger, 13); err != nil {
+	if err := addAppleICloudPrivateRelay(ranger); err != nil {
 		b.Errorf("Error adding AppleICloudPrivateRelay: %v\n", err)
 		return
 	}
@@ -98,7 +96,7 @@ func BenchmarkCidranger(b *testing.B) {
 	ranger.Contains(ip)
 }
 
-func addAppleICloudPrivateRelay(tr cidranger.Ranger, id int16) error {
+func addAppleICloudPrivateRelay(tr cidranger.Ranger) error {
 	// https://raw.githubusercontent.com/femueller/cloud-ip-ranges/refs/heads/master/apple-icloud-private-relay-ip-ranges.csv
 
 	req, err := http.NewRequest(http.MethodGet,
@@ -148,7 +146,7 @@ func addAppleICloudPrivateRelay(tr cidranger.Ranger, id int16) error {
 
 func TestAddFastly(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddFastly(tr, 13); err != nil {
+	if err := cloud.AddFastly(tr); err != nil {
 		t.Errorf("Error adding Fastly: %v\n", err)
 	}
 
@@ -157,7 +155,7 @@ func TestAddFastly(t *testing.T) {
 
 func TestAddGitHub(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddGitHub(tr, 13); err != nil {
+	if err := cloud.AddGitHub(tr); err != nil {
 		t.Errorf("Error adding github: %v\n", err)
 	}
 
@@ -166,7 +164,7 @@ func TestAddGitHub(t *testing.T) {
 
 func TestAddGoogleCloud(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddGoogleCloud(tr, 13); err != nil {
+	if err := cloud.AddGoogleCloud(tr); err != nil {
 		t.Errorf("Error adding google cloud: %v\n", err)
 	}
 
@@ -175,7 +173,7 @@ func TestAddGoogleCloud(t *testing.T) {
 
 func TestAddLinode(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddLinode(tr, 13); err != nil {
+	if err := cloud.AddLinode(tr); err != nil {
 		t.Errorf("Error adding: %v\n", err)
 	}
 
@@ -184,7 +182,7 @@ func TestAddLinode(t *testing.T) {
 
 func TestAddMicrosoftAzure(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddMicrosoftAzure(tr, 13); err != nil {
+	if err := cloud.AddMicrosoftAzure(tr); err != nil {
 		t.Errorf("Error adding: %v\n", err)
 	}
 
@@ -193,7 +191,7 @@ func TestAddMicrosoftAzure(t *testing.T) {
 
 func TestAddOracleCloud(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddOracleCloud(tr, 13); err != nil {
+	if err := cloud.AddOracleCloud(tr); err != nil {
 		t.Errorf("Error adding: %v\n", err)
 	}
 
@@ -202,7 +200,7 @@ func TestAddOracleCloud(t *testing.T) {
 
 func TestAddZscalerCloud(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddZscalerCloud(tr, 13); err != nil {
+	if err := cloud.AddZscalerCloud(tr); err != nil {
 		t.Errorf("Error adding: %v\n", err)
 	}
 
@@ -211,7 +209,7 @@ func TestAddZscalerCloud(t *testing.T) {
 
 func TestAddAkamai(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddAkamai(tr, 13); err != nil {
+	if err := cloud.AddAkamai(tr); err != nil {
 		t.Errorf("Error adding: %v\n", err)
 	}
 
@@ -220,7 +218,7 @@ func TestAddAkamai(t *testing.T) {
 
 func TestAddCloudflare(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddCloudflare(tr, 13); err != nil {
+	if err := cloud.AddCloudflare(tr); err != nil {
 		t.Errorf("Error adding: %v\n", err)
 	}
 
@@ -229,7 +227,7 @@ func TestAddCloudflare(t *testing.T) {
 
 func TestAddDigitalOcean(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
-	if err := cloud.AddDigitalOcean(tr, 13); err != nil {
+	if err := cloud.AddDigitalOcean(tr); err != nil {
 		t.Errorf("Error adding: %v\n", err)
 	}
 

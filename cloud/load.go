@@ -6,60 +6,61 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 
 	"github.com/vearutop/netrie"
 )
 
-func AddAppleICloudPrivateRelay(tr *netrie.CIDRIndex, id int16) error {
+func AddAppleICloudPrivateRelay(tr *netrie.CIDRIndex) error {
 	return loadFromText(
 		"https://raw.githubusercontent.com/femueller/cloud-ip-ranges/refs/heads/master/apple-icloud-private-relay-ip-ranges.csv",
 		tr,
-		id,
+		"apple-icloud-private-relay",
 	)
 }
 
-func AddAkamai(tr *netrie.CIDRIndex, id int16) error {
+func AddAkamai(tr *netrie.CIDRIndex) error {
 	return loadFromText(
 		"https://raw.githubusercontent.com/femueller/cloud-ip-ranges/refs/heads/master/akamai-v4-ip-ranges.txt",
 		tr,
-		id,
+		"akamai",
 	)
 }
 
-func AddCloudflare(tr *netrie.CIDRIndex, id int16) error {
+func AddCloudflare(tr *netrie.CIDRIndex) error {
 	return loadFromText(
 		"https://www.cloudflare.com/ips-v4",
 		tr,
-		id,
+		"cloudflare",
 	)
 }
 
-func AddDigitalOcean(tr *netrie.CIDRIndex, id int16) error {
+func AddDigitalOcean(tr *netrie.CIDRIndex) error {
 	return loadFromText(
 		"https://raw.githubusercontent.com/femueller/cloud-ip-ranges/refs/heads/master/digitalocean.csv",
 		tr,
-		id,
+		"digitalocean",
 	)
 }
 
-func AddFastly(tr *netrie.CIDRIndex, id int16) error {
+func AddFastly(tr *netrie.CIDRIndex) error {
 	return loadFromJSON("https://raw.githubusercontent.com/femueller/cloud-ip-ranges/refs/heads/master/fastly-ip-ranges.json",
 		func(path []string, value interface{}) error {
 			if len(path) == 2 && path[0] == "addresses" {
-				return tr.AddCIDR(value.(string), id)
+				return tr.AddCIDR(value.(string), "fastly")
 			}
 			return nil
 		})
 }
 
-func AddGoogleCloud(tr *netrie.CIDRIndex, id int16) error {
+func AddGoogleCloud(tr *netrie.CIDRIndex) error {
 	return loadFromJSON(
 		"https://www.gstatic.com/ipranges/cloud.json",
 		func(path []string, value interface{}) error {
 			if len(path) == 3 && path[2] == "ipv4Prefix" {
-				if err := tr.AddCIDR(value.(string), id); err != nil {
+				if err := tr.AddCIDR(value.(string), "google-cloud"); err != nil {
 					//if errors.Is(err, netrie.ErrOverlap) {
 					//	return nil
 					//}
@@ -72,43 +73,43 @@ func AddGoogleCloud(tr *netrie.CIDRIndex, id int16) error {
 		})
 }
 
-func AddGitHub(tr *netrie.CIDRIndex, id int16) error {
+func AddGitHub(tr *netrie.CIDRIndex) error {
 	return loadFromJSONBruteForce(
 		"https://raw.githubusercontent.com/femueller/cloud-ip-ranges/refs/heads/master/github-ip-ranges.json",
 		tr,
-		id,
+		"github",
 	)
 }
 
-func AddMicrosoftAzure(tr *netrie.CIDRIndex, id int16) error {
+func AddMicrosoftAzure(tr *netrie.CIDRIndex) error {
 	return loadFromJSONBruteForce(
 		"https://raw.githubusercontent.com/femueller/cloud-ip-ranges/refs/heads/master/microsoft-azure-ip-ranges.json",
 		tr,
-		id,
+		"microsoft-azure",
 	)
 }
 
-func AddOracleCloud(tr *netrie.CIDRIndex, id int16) error {
+func AddOracleCloud(tr *netrie.CIDRIndex) error {
 	return loadFromJSONBruteForce(
 		"https://docs.oracle.com/en-us/iaas/tools/public_ip_ranges.json",
 		tr,
-		id,
+		"oracle-cloud",
 	)
 }
 
-func AddZscalerCloud(tr *netrie.CIDRIndex, id int16) error {
+func AddZscalerCloud(tr *netrie.CIDRIndex) error {
 	return loadFromJSONBruteForce(
 		"https://raw.githubusercontent.com/femueller/cloud-ip-ranges/refs/heads/master/zscaler-cloud-ip-ranges.json",
 		tr,
-		id,
+		"zscaler-cloud",
 	)
 }
 
-func AddAWS(tr *netrie.CIDRIndex, id int16) error {
+func AddAWS(tr *netrie.CIDRIndex) error {
 	return loadFromJSON("https://ip-ranges.amazonaws.com/ip-ranges.json",
 		func(path []string, value interface{}) error {
 			if len(path) == 3 && path[2] == "ip_prefix" {
-				if err := tr.AddCIDR(value.(string), id); err != nil {
+				if err := tr.AddCIDR(value.(string), "aws"); err != nil {
 					if errors.Is(err, netrie.ErrOverlap) {
 						return nil
 					}
@@ -119,20 +120,25 @@ func AddAWS(tr *netrie.CIDRIndex, id int16) error {
 		})
 }
 
-func AddLinode(tr *netrie.CIDRIndex, id int16) error {
+func AddLinode(tr *netrie.CIDRIndex) error {
 	return loadFromText(
 		"https://geoip.linode.com/",
 		tr,
-		id,
+		"linode",
 	)
 }
 
-func loadFromJSONBruteForce(u string, tr *netrie.CIDRIndex, id int16) error {
+func loadFromJSONBruteForce(u string, tr *netrie.CIDRIndex, name string) error {
 	return loadFromJSON(
 		u,
 		func(path []string, value interface{}) error {
 			if s, ok := value.(string); ok {
-				if err := tr.AddCIDR(s, id); err != nil {
+				_, _, err := net.ParseCIDR(s)
+				if err != nil {
+					return nil
+				}
+
+				if err := tr.AddCIDR(s, name); err != nil {
 					if errors.Is(err, netrie.ErrOverlap) {
 						return nil
 					}
@@ -201,9 +207,67 @@ func loadFromTextCB(u string, cb func(value string) error) error {
 	return nil
 }
 
-func loadFromText(u string, tr *netrie.CIDRIndex, id int16) error {
+func loadFromTextGroupIPs(u string, tr *netrie.CIDRIndex, name string) error {
+	var ips []string
+
+	err := loadFromTextCB(u, func(value string) error {
+		ips = append(ips, value)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	nets := netrie.ClusterIPs(ips)
+
+	for _, n := range nets {
+		if err := tr.AddCIDR(n.String(), name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func loadFromTextGroupCIDRs(u string, tr *netrie.CIDRIndex, name string) error {
+	var cidrs []string
+
+	err := loadFromTextCB(u, func(value string) error {
+		cidrs = append(cidrs, value)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	nets := netrie.MergeCIDRs(cidrs)
+
+	for _, n := range nets {
+		if err := tr.AddCIDR(n.String(), name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func loadFromTextAllowOverlap(u string, tr *netrie.CIDRIndex, name string) error {
 	return loadFromTextCB(u, func(s string) error {
-		return tr.AddCIDR(u, id)
+		if err := tr.AddCIDR(s, name); err != nil {
+			if errors.Is(err, netrie.ErrOverlap) {
+				return nil
+			}
+
+			return err
+		}
+
+		return nil
+	})
+}
+
+func loadFromText(u string, tr *netrie.CIDRIndex, name string) error {
+	return loadFromTextCB(u, func(s string) error {
+		return tr.AddCIDR(s, name)
 	})
 }
 

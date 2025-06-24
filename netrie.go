@@ -25,6 +25,7 @@ type trieNode struct {
 // CIDRIndex is the trie structure for CIDR lookups.
 type CIDRIndex struct {
 	nodes []trieNode // Slice storing all trie nodes.
+	names []string
 	total int
 }
 
@@ -36,16 +37,29 @@ func NewCIDRIndex() *CIDRIndex {
 }
 
 // Len returns the number of CIDRs in the trie.
-func (t *CIDRIndex) Len() int {
-	return t.total
+func (idx *CIDRIndex) Len() int {
+	return idx.total
 }
 
 // AddCIDR adds a CIDR with an associated id to the trie.
 // Returns error if CIDR is invalid or overlaps.
-func (t *CIDRIndex) AddCIDR(cidr string, id int16) error {
+func (idx *CIDRIndex) AddCIDR(cidr string, name string) error {
+	id := int16(0)
+	for i, n := range idx.names {
+		if n == name {
+			id = int16(i + 1) // IDs are 1-based.
+			break
+		}
+	}
+
+	if id == 0 {
+		idx.names = append(idx.names, name)
+		id = int16(len(idx.names))
+	}
+
 	_, ipNet, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return fmt.Errorf("invalid CIDR: %v", cidr)
+		return fmt.Errorf("invalid CIDR (%s): %v", name, cidr)
 	}
 
 	// Get 16-byte IP representation (IPv4 or IPv6).
@@ -60,46 +74,46 @@ func (t *CIDRIndex) AddCIDR(cidr string, id int16) error {
 	// Traverse or build the trie for each bit in the mask.
 	for i := 0; i < maskLen; i++ {
 		bit := (ip[i/8] >> (7 - (i % 8))) & 1
-		childIndex := t.nodes[current].children[bit]
+		childIndex := idx.nodes[current].children[bit]
 		if childIndex == -1 {
 			// Create new node.
-			t.nodes[current].children[bit] = int32(len(t.nodes))
-			t.nodes = append(t.nodes, trieNode{
+			idx.nodes[current].children[bit] = int32(len(idx.nodes))
+			idx.nodes = append(idx.nodes, trieNode{
 				children: [2]int32{-1, -1},
 				id:       -1,
 				maskLen:  -1,
 			})
-			childIndex = t.nodes[current].children[bit]
+			childIndex = idx.nodes[current].children[bit]
 		}
 		current = int(childIndex)
 	}
 
 	// Set id and mask length at the leaf node.
-	if t.nodes[current].id != -1 {
-		return fmt.Errorf("%w: %s", ErrOverlap, cidr)
+	if idx.nodes[current].id != -1 {
+		return fmt.Errorf("%w %s with %s: %s", ErrOverlap, name, idx.names[idx.nodes[current].id], cidr)
 	}
-	t.nodes[current].id = id
-	t.nodes[current].maskLen = int8(maskLen)
+	idx.nodes[current].id = id
+	idx.nodes[current].maskLen = int8(maskLen)
 
-	t.total++
+	idx.total++
 
 	return nil
 }
 
 // Lookup finds the id of the CIDR that contains the given IP string.
-// Returns -1 if no matching CIDR is found or IP is invalid.
-func (t *CIDRIndex) Lookup(ipStr string) int16 {
+// Returns "" if no matching CIDR is found or IP is invalid.
+func (idx *CIDRIndex) Lookup(ipStr string) string {
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
-		return -1 // Invalid IP address.
+		return "" // Invalid IP address.
 	}
 
-	return t.LookupIP(ip)
+	return idx.LookupIP(ip)
 }
 
 // LookupIP finds the id of the CIDR that contains the given IP.
-// Returns -1 if no matching CIDR is found.
-func (t *CIDRIndex) LookupIP(ip net.IP) int16 {
+// Returns "" if no matching CIDR is found.
+func (idx *CIDRIndex) LookupIP(ip net.IP) string {
 	// Convert to 16-byte representation, handling IPv4.
 	if ip4 := ip.To4(); ip4 != nil {
 		ip = ip4
@@ -117,14 +131,14 @@ func (t *CIDRIndex) LookupIP(ip net.IP) int16 {
 
 	for i := 0; i < maxBits; i++ {
 		// Check if current node has an id and update best match if mask is longer.
-		if t.nodes[current].id != -1 && t.nodes[current].maskLen > bestMaskLen {
-			bestID = t.nodes[current].id
-			bestMaskLen = t.nodes[current].maskLen
+		if idx.nodes[current].id != -1 && idx.nodes[current].maskLen > bestMaskLen {
+			bestID = idx.nodes[current].id
+			bestMaskLen = idx.nodes[current].maskLen
 		}
 
 		// Get the next bit.
 		bit := (ip[i/8] >> (7 - (i % 8))) & 1
-		childIndex := t.nodes[current].children[bit]
+		childIndex := idx.nodes[current].children[bit]
 		if childIndex == -1 {
 			break // No further path.
 		}
@@ -132,9 +146,13 @@ func (t *CIDRIndex) LookupIP(ip net.IP) int16 {
 	}
 
 	// Check the final node for a better match.
-	if t.nodes[current].id != -1 && t.nodes[current].maskLen > bestMaskLen {
-		bestID = t.nodes[current].id
+	if idx.nodes[current].id != -1 && idx.nodes[current].maskLen > bestMaskLen {
+		bestID = idx.nodes[current].id
 	}
 
-	return bestID
+	if bestID == -1 {
+		return ""
+	}
+
+	return idx.names[bestID-1]
 }
