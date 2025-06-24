@@ -11,6 +11,10 @@
 
 Project template with GitHub actions for Go.
 
+Cloud IP aggregated sources:
+https://github.com/femueller/cloud-ip-ranges
+https://github.com/disposable/cloud-ip-ranges
+
 ## Install
 
 ```
