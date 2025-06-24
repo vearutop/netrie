@@ -167,7 +167,7 @@ func loadFromJSON(u string, cb func(path []string, value interface{}) error) err
 	return nil
 }
 
-func loadFromText(u string, tr *netrie.CIDRIndex, id int16) error {
+func loadFromTextCB(u string, cb func(value string) error) error {
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return err
@@ -193,12 +193,18 @@ func loadFromText(u string, tr *netrie.CIDRIndex, id int16) error {
 
 		line = strings.SplitN(line, ",", 2)[0]
 
-		if err := tr.AddCIDR(line, id); err != nil {
+		if err := cb(line); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func loadFromText(u string, tr *netrie.CIDRIndex, id int16) error {
+	return loadFromTextCB(u, func(s string) error {
+		return tr.AddCIDR(u, id)
+	})
 }
 
 // walkJSON traverses a JSON stream and calls cb for each scalar value.
