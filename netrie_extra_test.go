@@ -78,33 +78,6 @@ func TestAddCIDR_IPv6(t *testing.T) {
 	}
 }
 
-// TestAddCIDR_Overlap tests adding overlapping CIDRs and expects errors.
-func TestAddCIDR_Overlap(t *testing.T) {
-	idx := NewCIDRIndex()
-	tests := []struct {
-		cidr string
-		name string
-		err  error
-	}{
-		{"192.168.1.0/24", "net1", nil},
-		{"192.168.1.0/24", "net2", fmt.Errorf("%w net2 with net1: 192.168.1.0/24", ErrOverlap)},
-		{"192.168.1.128/25", "net3", fmt.Errorf("%w net3 with net1: 192.168.1.128/25", ErrOverlap)},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s_%s", tt.cidr, tt.name), func(t *testing.T) {
-			err := idx.AddCIDR(tt.cidr, tt.name)
-			if err != nil && tt.err != nil {
-				if err.Error() != tt.err.Error() {
-					t.Errorf("Expected error %v, got %v", tt.err, err)
-				}
-			} else if err != tt.err {
-				t.Errorf("Expected error %v, got %v", tt.err, err)
-			}
-		})
-	}
-}
-
 // TestAddCIDR_Invalid tests adding invalid CIDRs.
 func TestAddCIDR_Invalid(t *testing.T) {
 	idx := NewCIDRIndex()

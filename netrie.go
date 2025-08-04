@@ -5,16 +5,6 @@ import (
 	"net"
 )
 
-type errString string
-
-func (e errString) Error() string {
-	return string(e)
-}
-
-const (
-	ErrOverlap = errString("overlap")
-)
-
 // trieNode represents a node in the CIDR trie.
 type trieNode struct {
 	children [2]int32 // Indices of child nodes (0 or 1).
@@ -27,12 +17,15 @@ type CIDRIndex struct {
 	nodes []trieNode // Slice storing all trie nodes.
 	names []string
 	total int
+
+	idByName map[string]int16
 }
 
 // NewCIDRIndex initializes a new CIDR trie with a root node.
 func NewCIDRIndex() *CIDRIndex {
 	return &CIDRIndex{
-		nodes: []trieNode{{children: [2]int32{-1, -1}, id: -1, maskLen: -1}},
+		nodes:    []trieNode{{children: [2]int32{-1, -1}, id: -1, maskLen: -1}},
+		idByName: make(map[string]int16),
 	}
 }
 
@@ -41,25 +34,18 @@ func (idx *CIDRIndex) Len() int {
 	return idx.total
 }
 
-// AddCIDR adds a CIDR with an associated id to the trie.
-// Returns error if CIDR is invalid or overlaps.
-func (idx *CIDRIndex) AddCIDR(cidr string, name string) error {
-	id := int16(0)
-	for i, n := range idx.names {
-		if n == name {
-			id = int16(i + 1) // IDs are 1-based.
-			break
-		}
-	}
+// LenNames returns the number of different names in the trie.
+func (idx *CIDRIndex) LenNames() int {
+	return len(idx.idByName)
+}
+
+func (idx *CIDRIndex) AddNet(ipNet *net.IPNet, name string) {
+	id := idx.idByName[name]
 
 	if id == 0 {
 		idx.names = append(idx.names, name)
 		id = int16(len(idx.names))
-	}
-
-	_, ipNet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return fmt.Errorf("invalid CIDR (%s): %v", name, cidr)
+		idx.idByName[name] = id
 	}
 
 	// Get 16-byte IP representation (IPv4 or IPv6).
@@ -89,13 +75,21 @@ func (idx *CIDRIndex) AddCIDR(cidr string, name string) error {
 	}
 
 	// Set id and mask length at the leaf node.
-	if idx.nodes[current].id != -1 {
-		return fmt.Errorf("%w %s with %s: %s", ErrOverlap, name, idx.names[idx.nodes[current].id], cidr)
-	}
 	idx.nodes[current].id = id
 	idx.nodes[current].maskLen = int8(maskLen)
 
 	idx.total++
+}
+
+// AddCIDR adds a CIDR with an associated id to the trie.
+// Returns error if CIDR is invalid or overlaps.
+func (idx *CIDRIndex) AddCIDR(cidr string, name string) error {
+	_, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return fmt.Errorf("invalid CIDR (%s): %v", name, cidr)
+	}
+
+	idx.AddNet(ipNet, name)
 
 	return nil
 }

@@ -1,4 +1,4 @@
-package cloud
+package lists
 
 import (
 	"encoding/json"
@@ -9,9 +9,9 @@ import (
 	"github.com/vearutop/netrie"
 )
 
-// LoadDisposableCloudRanges fills CIDRIndex with networks from
+// LoadCloud fills CIDRIndex with networks from
 // https://github.com/disposable/cloud-ip-ranges/tree/master/txt.
-func LoadDisposableCloudRanges(tr *netrie.CIDRIndex) error {
+func LoadCloud(tr *netrie.CIDRIndex) error {
 	apiURL := "https://api.github.com/repos/disposable/cloud-ip-ranges/contents/txt"
 
 	type FileEntry struct {
@@ -59,14 +59,6 @@ func LoadDisposableCloudRanges(tr *netrie.CIDRIndex) error {
 
 		if name == "apple-icloud" {
 			if err := loadFromTextGroupCIDRs(entry.DownloadURL, tr, name); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if name == "heroku-aws" {
-			if err := loadFromTextAllowOverlap(entry.DownloadURL, tr, name); err != nil {
 				return err
 			}
 

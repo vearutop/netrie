@@ -1,4 +1,4 @@
-package cloud_test
+package lists_test
 
 import (
 	"net"
@@ -6,18 +6,19 @@ import (
 	"testing"
 
 	"github.com/vearutop/netrie"
-	"github.com/vearutop/netrie/cloud"
+	"github.com/vearutop/netrie/lists"
 )
 
-func TestLoadDisposableCloudRanges(t *testing.T) {
+func TestLoadCloud(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
 
-	err := cloud.LoadDisposableCloudRanges(tr)
+	err := lists.LoadCloud(tr)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	println(tr.Len())
+	println("nets:", tr.Len())
+	println("names:", tr.LenNames())
 
 	ms := runtime.MemStats{}
 	runtime.ReadMemStats(&ms)
@@ -38,7 +39,8 @@ func TestLoadDisposableCloud(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	println(tr.Len())
+	println("nets:", tr.Len())
+	println("names:", tr.LenNames())
 
 	ms := runtime.MemStats{}
 	runtime.ReadMemStats(&ms)

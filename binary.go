@@ -1,6 +1,7 @@
 package netrie
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -19,7 +20,7 @@ func (n *trieNode) MarshalBinary() ([]byte, error) {
 
 // UnmarshalBinary for trieNode (from previous implementation).
 func (n *trieNode) UnmarshalBinary(data []byte) error {
-	if len(data) < 11 {
+	if len(data) != 11 {
 		return fmt.Errorf("insufficient data: got %d bytes, need 11", len(data))
 	}
 	n.children[0] = int32(binary.BigEndian.Uint32(data[0:4]))
@@ -29,20 +30,13 @@ func (n *trieNode) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// SaveToFile saves the CIDRIndex to a file.
-func (idx *CIDRIndex) SaveToFile(filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-
+func (idx *CIDRIndex) Save(w io.Writer) error {
 	// Write header: total (int32), nodesLen (int32), namesLen (int32)
 	header := make([]byte, 12)
 	binary.BigEndian.PutUint32(header[0:4], uint32(idx.total))
 	binary.BigEndian.PutUint32(header[4:8], uint32(len(idx.nodes)))
 	binary.BigEndian.PutUint32(header[8:12], uint32(len(idx.names)))
-	if _, err := file.Write(header); err != nil {
+	if _, err := w.Write(header); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
@@ -54,7 +48,7 @@ func (idx *CIDRIndex) SaveToFile(filename string) error {
 			return fmt.Errorf("failed to marshal node %d: %w", i, err)
 		}
 		copy(nodeBuf, nodeData)
-		if _, err := file.Write(nodeBuf); err != nil {
+		if _, err := w.Write(nodeBuf); err != nil {
 			return fmt.Errorf("failed to write node %d: %w", i, err)
 		}
 	}
@@ -64,11 +58,11 @@ func (idx *CIDRIndex) SaveToFile(filename string) error {
 		// Write string length (int32)
 		nameLenBuf := make([]byte, 4)
 		binary.BigEndian.PutUint32(nameLenBuf, uint32(len(name)))
-		if _, err := file.Write(nameLenBuf); err != nil {
+		if _, err := w.Write(nameLenBuf); err != nil {
 			return fmt.Errorf("failed to write name %d length: %w", i, err)
 		}
 		// Write string bytes
-		if _, err := file.Write([]byte(name)); err != nil {
+		if _, err := w.Write([]byte(name)); err != nil {
 			return fmt.Errorf("failed to write name %d: %w", i, err)
 		}
 	}
@@ -76,18 +70,32 @@ func (idx *CIDRIndex) SaveToFile(filename string) error {
 	return nil
 }
 
-// LoadFromFile loads the CIDRIndex from a file.
-func (idx *CIDRIndex) LoadFromFile(filename string) error {
-	file, err := os.Open(filename)
+// SaveToFile saves the CIDRIndex to a file.
+func (idx *CIDRIndex) SaveToFile(filename string) error {
+	file, err := os.Create(filename)
 	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
+		return fmt.Errorf("create file to save index: %w", err)
 	}
 	defer file.Close()
 
+	w := bufio.NewWriter(file)
+
+	if err := idx.Save(w); err != nil {
+		return fmt.Errorf("save file: %w", err)
+	}
+
+	if err := w.Flush(); err != nil {
+		return fmt.Errorf("flush file: %w", err)
+	}
+
+	return nil
+}
+
+func (idx *CIDRIndex) Load(r io.Reader) error {
 	// Read header: total (int32), nodesLen (int32), namesLen (int32)
 	header := make([]byte, 12)
-	if _, err := io.ReadFull(file, header); err != nil {
-		return fmt.Errorf("failed to read header: %w", err)
+	if _, err := io.ReadFull(r, header); err != nil {
+		return fmt.Errorf("read header: %w", err)
 	}
 	total := int(binary.BigEndian.Uint32(header[0:4]))
 	nodesLen := int(binary.BigEndian.Uint32(header[4:8]))
@@ -101,11 +109,11 @@ func (idx *CIDRIndex) LoadFromFile(filename string) error {
 	// Read nodes
 	nodeBuf := make([]byte, 11)
 	for i := 0; i < nodesLen; i++ {
-		if _, err := io.ReadFull(file, nodeBuf); err != nil {
-			return fmt.Errorf("failed to read node %d: %w", i, err)
+		if _, err := io.ReadFull(r, nodeBuf); err != nil {
+			return fmt.Errorf("read node %d: %w", i, err)
 		}
 		if err := idx.nodes[i].UnmarshalBinary(nodeBuf); err != nil {
-			return fmt.Errorf("failed to unmarshal node %d: %w", i, err)
+			return fmt.Errorf("unmarshal node %d: %w", i, err)
 		}
 	}
 
@@ -113,18 +121,33 @@ func (idx *CIDRIndex) LoadFromFile(filename string) error {
 	for i := 0; i < namesLen; i++ {
 		// Read string length (int32)
 		nameLenBuf := make([]byte, 4)
-		if _, err := io.ReadFull(file, nameLenBuf); err != nil {
-			return fmt.Errorf("failed to read name %d length: %w", i, err)
+		if _, err := io.ReadFull(r, nameLenBuf); err != nil {
+			return fmt.Errorf("read name %d length: %w", i, err)
 		}
 		nameLen := int(binary.BigEndian.Uint32(nameLenBuf))
 
 		// Read string bytes
 		nameBuf := make([]byte, nameLen)
-		if _, err := io.ReadFull(file, nameBuf); err != nil {
-			return fmt.Errorf("failed to read name %d: %w", i, err)
+		if _, err := io.ReadFull(r, nameBuf); err != nil {
+			return fmt.Errorf("read name %d len %d: %w", i, nameLen, err)
 		}
-		idx.names[i] = string(nameBuf)
+		name := string(nameBuf)
+		idx.names[i] = name
+		idx.idByName[name] = int16(i)
 	}
 
 	return nil
+}
+
+// LoadFromFile loads the CIDRIndex from a file.
+func (idx *CIDRIndex) LoadFromFile(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	r := bufio.NewReader(file)
+
+	return idx.Load(r)
 }
