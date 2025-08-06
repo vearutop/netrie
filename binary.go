@@ -10,23 +10,23 @@ import (
 
 // MarshalBinary for trieNode (from previous implementation).
 func (n *trieNode) MarshalBinary() ([]byte, error) {
-	data := make([]byte, 11)
+	data := make([]byte, 13)
 	binary.BigEndian.PutUint32(data[0:4], uint32(n.children[0]))
 	binary.BigEndian.PutUint32(data[4:8], uint32(n.children[1]))
-	binary.BigEndian.PutUint16(data[8:10], uint16(n.id))
-	data[10] = byte(n.maskLen)
+	binary.BigEndian.PutUint32(data[8:12], uint32(n.id))
+	data[12] = byte(n.maskLen)
 	return data, nil
 }
 
 // UnmarshalBinary for trieNode (from previous implementation).
 func (n *trieNode) UnmarshalBinary(data []byte) error {
-	if len(data) != 11 {
+	if len(data) != 13 {
 		return fmt.Errorf("insufficient data: got %d bytes, need 11", len(data))
 	}
 	n.children[0] = int32(binary.BigEndian.Uint32(data[0:4]))
 	n.children[1] = int32(binary.BigEndian.Uint32(data[4:8]))
-	n.id = int16(binary.BigEndian.Uint16(data[8:10]))
-	n.maskLen = int8(data[10])
+	n.id = int32(binary.BigEndian.Uint32(data[8:12]))
+	n.maskLen = int8(data[12])
 	return nil
 }
 
@@ -41,14 +41,12 @@ func (idx *CIDRIndex) Save(w io.Writer) error {
 	}
 
 	// Write nodes
-	nodeBuf := make([]byte, 11) // Reusable buffer for each node
 	for i, node := range idx.nodes {
 		nodeData, err := node.MarshalBinary()
 		if err != nil {
 			return fmt.Errorf("failed to marshal node %d: %w", i, err)
 		}
-		copy(nodeBuf, nodeData)
-		if _, err := w.Write(nodeBuf); err != nil {
+		if _, err := w.Write(nodeData); err != nil {
 			return fmt.Errorf("failed to write node %d: %w", i, err)
 		}
 	}
@@ -107,7 +105,7 @@ func (idx *CIDRIndex) Load(r io.Reader) error {
 	idx.names = make([]string, namesLen)
 
 	// Read nodes
-	nodeBuf := make([]byte, 11)
+	nodeBuf := make([]byte, 13)
 	for i := 0; i < nodesLen; i++ {
 		if _, err := io.ReadFull(r, nodeBuf); err != nil {
 			return fmt.Errorf("read node %d: %w", i, err)
@@ -133,7 +131,7 @@ func (idx *CIDRIndex) Load(r io.Reader) error {
 		}
 		name := string(nameBuf)
 		idx.names[i] = name
-		idx.idByName[name] = int16(i)
+		idx.idByName[name] = int32(i)
 	}
 
 	return nil

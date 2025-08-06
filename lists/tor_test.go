@@ -1,16 +1,16 @@
 package lists_test
 
 import (
-	"github.com/vearutop/netrie"
-	"github.com/vearutop/netrie/lists"
 	"runtime"
 	"testing"
+
+	"github.com/vearutop/netrie"
 )
 
 func TestLoadTorExitNodes(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
 
-	err := lists.LoadTorExitNodes(tr)
+	err := netrie.LoadFromTextGroupIPs("testdata/torlist.txt", tr, "tor-exit-nodes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,6 +27,8 @@ func TestLoadTorExitNodes(t *testing.T) {
 
 	println("should be apple", tr.Lookup("172.224.227.36"))
 	println("should be empty", tr.Lookup("178.15.138.158"))
+	println("should be tor", tr.Lookup("2001:067c:0e60:0c0c:0192:0042:0116:0185"))
+	println("should be tor", tr.Lookup("192.42.116.214"))
 }
 
 func TestLoadTorExitNodes_file(t *testing.T) {
@@ -48,4 +50,7 @@ func TestLoadTorExitNodes_file(t *testing.T) {
 	println(tr.Lookup("178.15.138.158"))
 	println(tr.Lookup("66.249.66.71"))
 	println(tr.Lookup("143.198.196.44"))
+	println("should be tor", tr.Lookup("2001:067c:0e60:0c0c:0192:0042:0116:0185"))
+	println("should be tor", tr.Lookup("192.42.116.214"))
+
 }

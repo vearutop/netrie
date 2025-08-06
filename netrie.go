@@ -8,7 +8,7 @@ import (
 // trieNode represents a node in the CIDR trie.
 type trieNode struct {
 	children [2]int32 // Indices of child nodes (0 or 1).
-	id       int16    // ID associated with the CIDR, -1 if none.
+	id       int32    // ID associated with the CIDR, -1 if none.
 	maskLen  int8     // Length of the CIDR mask, -1 if none.
 }
 
@@ -18,14 +18,14 @@ type CIDRIndex struct {
 	names []string
 	total int
 
-	idByName map[string]int16
+	idByName map[string]int32
 }
 
 // NewCIDRIndex initializes a new CIDR trie with a root node.
 func NewCIDRIndex() *CIDRIndex {
 	return &CIDRIndex{
 		nodes:    []trieNode{{children: [2]int32{-1, -1}, id: -1, maskLen: -1}},
-		idByName: make(map[string]int16),
+		idByName: make(map[string]int32),
 	}
 }
 
@@ -44,7 +44,7 @@ func (idx *CIDRIndex) AddNet(ipNet *net.IPNet, name string) {
 
 	if id == 0 {
 		idx.names = append(idx.names, name)
-		id = int16(len(idx.names))
+		id = int32(len(idx.names))
 		idx.idByName[name] = id
 	}
 
@@ -114,7 +114,7 @@ func (idx *CIDRIndex) LookupIP(ip net.IP) string {
 	}
 
 	current := 0
-	bestID := int16(-1)
+	bestID := int32(-1)
 	bestMaskLen := int8(-1)
 
 	// Traverse up to 128 bits for IPv6 (or 32 for IPv4).
@@ -146,6 +146,10 @@ func (idx *CIDRIndex) LookupIP(ip net.IP) string {
 
 	if bestID == -1 {
 		return ""
+	}
+
+	if bestID < 0 {
+		return "wtf!"
 	}
 
 	return idx.names[bestID-1]

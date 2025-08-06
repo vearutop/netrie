@@ -12,7 +12,7 @@ import (
 func TestLoadCloud(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
 
-	err := lists.LoadCloud(tr)
+	err := lists.Cloud(tr)
 	if err != nil {
 		t.Fatal(err)
 	}

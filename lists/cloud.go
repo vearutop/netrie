@@ -9,9 +9,9 @@ import (
 	"github.com/vearutop/netrie"
 )
 
-// LoadCloud fills CIDRIndex with networks from
+// Cloud fills CIDRIndex with networks from
 // https://github.com/disposable/cloud-ip-ranges/tree/master/txt.
-func LoadCloud(tr *netrie.CIDRIndex) error {
+func Cloud(tr *netrie.CIDRIndex) error {
 	apiURL := "https://api.github.com/repos/disposable/cloud-ip-ranges/contents/txt"
 
 	type FileEntry struct {
@@ -50,7 +50,7 @@ func LoadCloud(tr *netrie.CIDRIndex) error {
 		name := strings.TrimSuffix(entry.Name, ".txt")
 
 		if name == "ahrefs" {
-			if err := loadFromTextGroupIPs(entry.DownloadURL, tr, name); err != nil {
+			if err := netrie.LoadFromTextGroupIPs(entry.DownloadURL, tr, name); err != nil {
 				return err
 			}
 
@@ -58,7 +58,7 @@ func LoadCloud(tr *netrie.CIDRIndex) error {
 		}
 
 		if name == "apple-icloud" {
-			if err := loadFromTextGroupCIDRs(entry.DownloadURL, tr, name); err != nil {
+			if err := netrie.LoadFromTextGroupCIDRs(entry.DownloadURL, tr, name); err != nil {
 				return err
 			}
 

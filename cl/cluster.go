@@ -1,4 +1,4 @@
-package netrie
+package main
 
 import (
 	"fmt"

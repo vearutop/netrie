@@ -2,21 +2,22 @@ package netrie
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestTrieNode_MarshalBinary(t *testing.T) {
 	tn := trieNode{
 		children: [2]int32{5678, 1234},
-		id:       3456,
+		id:       3456789,
 		maskLen:  68,
 	}
 
 	b, err := tn.MarshalBinary()
 	require.NoError(t, err)
-	assert.Len(t, b, 11)
+	assert.Len(t, b, 13)
 
 	tn2 := trieNode{}
 	require.NoError(t, tn2.UnmarshalBinary(b))
