@@ -173,15 +173,13 @@ func LoadFromTextGroupIPs(u string, tr *CIDRIndex, name string) error {
 		return err
 	}
 
-	nets, err := ClusterCIDRs(ips)
+	nets, err := ClusterCIDRs2(ips)
 	if err != nil {
 		return fmt.Errorf("cluster CIDRs: %w", err)
 	}
 
 	for _, n := range nets {
-		if err := tr.AddCIDR(n.String(), name); err != nil {
-			return err
-		}
+		tr.AddNet(n, name)
 	}
 
 	return nil
@@ -198,15 +196,13 @@ func LoadFromTextGroupCIDRs(u string, tr *CIDRIndex, name string) error {
 		return err
 	}
 
-	nets, err := ClusterCIDRs(cidrs)
+	nets, err := ClusterCIDRs2(cidrs)
 	if err != nil {
 		return fmt.Errorf("cluster CIDRs: %w", err)
 	}
 
 	for _, n := range nets {
-		if err := tr.AddCIDR(n.String(), name); err != nil {
-			return err
-		}
+		tr.AddNet(n, name)
 	}
 
 	return nil

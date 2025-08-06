@@ -189,7 +189,7 @@ func TestClusterCIDRs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ClusterCIDRs(tc.input)
+			got, err := ClusterCIDRs2(tc.input)
 			if tc.err {
 				if err == nil {
 					t.Fatalf("ClusterCIDRs(%v) = %v, wanted error", tc.input, got)

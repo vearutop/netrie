@@ -47,6 +47,8 @@ func Cloud(tr *netrie.CIDRIndex) error {
 			continue
 		}
 
+		println("loading", entry.Name)
+
 		name := strings.TrimSuffix(entry.Name, ".txt")
 
 		if name == "ahrefs" {
