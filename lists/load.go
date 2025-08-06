@@ -113,9 +113,7 @@ func loadFromTextGroupIPs(u string, tr *netrie.CIDRIndex, name string) error {
 	nets := netrie.ClusterIPs(ips)
 
 	for _, n := range nets {
-		if err := tr.AddCIDR(n.String(), name); err != nil {
-			return err
-		}
+		tr.AddNet(n, name)
 	}
 
 	return nil
@@ -135,9 +133,7 @@ func loadFromTextGroupCIDRs(u string, tr *netrie.CIDRIndex, name string) error {
 	nets := netrie.MergeCIDRs(cidrs)
 
 	for _, n := range nets {
-		if err := tr.AddCIDR(n.String(), name); err != nil {
-			return err
-		}
+		tr.AddNet(n, name)
 	}
 
 	return nil

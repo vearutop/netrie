@@ -65,7 +65,7 @@ func LoadCloud(tr *netrie.CIDRIndex) error {
 			continue
 		}
 
-		if err := loadFromText(entry.DownloadURL, tr, name); err != nil {
+		if err := loadFromTextGroupCIDRs(entry.DownloadURL, tr, name); err != nil {
 			return err
 		}
 	}
