@@ -49,21 +49,21 @@ func LoadCloud(tr *netrie.CIDRIndex) error {
 
 		name := strings.TrimSuffix(entry.Name, ".txt")
 
-		if name == "ahrefs" {
-			if err := loadFromTextGroupIPs(entry.DownloadURL, tr, name); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		if name == "apple-icloud" {
-			if err := loadFromTextGroupCIDRs(entry.DownloadURL, tr, name); err != nil {
-				return err
-			}
-
-			continue
-		}
+		//if name == "ahrefs" {
+		//	if err := loadFromTextGroupIPs(entry.DownloadURL, tr, name); err != nil {
+		//		return err
+		//	}
+		//
+		//	continue
+		//}
+		//
+		//if name == "apple-icloud" {
+		//	if err := loadFromTextGroupCIDRs(entry.DownloadURL, tr, name); err != nil {
+		//		return err
+		//	}
+		//
+		//	continue
+		//}
 
 		if err := loadFromTextGroupCIDRs(entry.DownloadURL, tr, name); err != nil {
 			return err

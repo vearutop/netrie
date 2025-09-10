@@ -1,10 +1,11 @@
 package lists_test
 
 import (
-	"github.com/vearutop/netrie"
-	"github.com/vearutop/netrie/lists"
 	"runtime"
 	"testing"
+
+	"github.com/vearutop/netrie"
+	"github.com/vearutop/netrie/lists"
 )
 
 func TestLoadTorExitNodes(t *testing.T) {

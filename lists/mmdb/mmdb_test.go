@@ -1,23 +1,24 @@
-package geoip_test
+package mmdb_test
 
 import (
-	"github.com/oschwald/geoip2-golang"
-	"github.com/oschwald/maxminddb-golang"
-	"github.com/vearutop/netrie"
-	"github.com/vearutop/netrie/geoip"
 	"net"
 	"os"
 	"path"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/oschwald/geoip2-golang"
+	"github.com/oschwald/maxminddb-golang"
+	"github.com/vearutop/netrie"
+	"github.com/vearutop/netrie/lists/mmdb"
 )
 
 func TestLoadCityMMDB2(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
 	mmdbPath := path.Join(os.TempDir() + "GeoIP2-City.mmdb")
 
-	if err := geoip.LoadCityMMDB(tr, mmdbPath, geoip.DefaultCityName); err != nil {
+	if err := mmdb.LoadCityMMDB(tr, mmdbPath, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -29,16 +30,16 @@ func TestLoadCityMMDB2(t *testing.T) {
 	println("HEAP:", ms.HeapAlloc)
 
 	println(tr.Lookup("172.224.227.36"))
-	//println(tr.Lookup("178.15.138.158"))
-	//println(tr.Lookup("66.249.66.71"))
-	//println(tr.Lookup("143.198.196.44"))
+	// println(tr.Lookup("178.15.138.158"))
+	// println(tr.Lookup("66.249.66.71"))
+	// println(tr.Lookup("143.198.196.44"))
 }
 
 func TestLoadCityMMDB(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
 	mmdbPath := path.Join(os.TempDir() + "GeoIP2-City.mmdb")
 
-	if err := geoip.LoadCityMMDB(tr, mmdbPath, geoip.DefaultCityName); err != nil {
+	if err := mmdb.LoadCityMMDB(tr, mmdbPath, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -52,9 +53,9 @@ func TestLoadCityMMDB(t *testing.T) {
 	println("HEAP:", ms.HeapAlloc)
 
 	println(tr.Lookup("172.224.227.36"))
-	//println(tr.Lookup("178.15.138.158"))
-	//println(tr.Lookup("66.249.66.71"))
-	//println(tr.Lookup("143.198.196.44"))
+	println(tr.Lookup("178.15.138.158"))
+	println(tr.Lookup("66.249.66.71"))
+	println(tr.Lookup("143.198.196.44"))
 }
 
 func TestLoadDisposableCloud(t *testing.T) {
@@ -71,10 +72,10 @@ func TestLoadDisposableCloud(t *testing.T) {
 	runtime.ReadMemStats(&ms)
 	println("HEAP:", ms.HeapAlloc)
 
-	println(tr.Lookup("172.224.227.36"))
+	//println(tr.Lookup("172.224.227.36"))
 	println(tr.Lookup("178.15.138.158"))
-	println(tr.Lookup("66.249.66.71"))
-	println(tr.Lookup("143.198.196.44"))
+	//println(tr.Lookup("66.249.66.71"))
+	//println(tr.Lookup("143.198.196.44"))
 }
 
 func BenchmarkMMDBLookup(b *testing.B) {
@@ -82,7 +83,7 @@ func BenchmarkMMDBLookup(b *testing.B) {
 	mmdbPath := path.Join(os.TempDir() + "GeoIP2-City.mmdb")
 	println(mmdbPath)
 
-	//db, err := geoip2.Open(mmdbPath)
+	// db, err := geoip2.Open(mmdbPath)
 
 	db, err := maxminddb.Open(mmdbPath)
 	if err != nil {
@@ -105,5 +106,34 @@ func BenchmarkMMDBLookup(b *testing.B) {
 		}
 
 	}
+}
 
+func BenchmarkMMDBLookupAny(b *testing.B) {
+	st := time.Now()
+	mmdbPath := path.Join(os.TempDir() + "GeoIP2-City.mmdb")
+	println(mmdbPath)
+
+	// db, err := geoip2.Open(mmdbPath)
+
+	db, err := maxminddb.Open(mmdbPath)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer db.Close()
+	println("open db:", time.Since(st).String())
+
+	// If you are using strings that may be invalid, check that ip is not nil
+	ip := net.ParseIP("172.224.227.36")
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var city map[string]any
+		_, _, err := db.LookupNetwork(ip, &city)
+		//_, err := db.City(ip)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+	}
 }

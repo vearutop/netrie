@@ -50,6 +50,8 @@ func TestLoadDisposableCloud(t *testing.T) {
 	println(tr.Lookup("178.15.138.158"))
 	println(tr.Lookup("66.249.66.71"))
 	println(tr.Lookup("143.198.196.44"))
+	println(tr.Lookup("18.215.140.160"))
+	println(tr.Lookup("18.213.114.129"))
 }
 
 func BenchmarkLoadDisposableCloudRanges(b *testing.B) {

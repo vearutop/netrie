@@ -115,6 +115,7 @@ func (idx *CIDRIndex) LookupIP(ip net.IP) string {
 
 	current := 0
 	bestID := int16(-1)
+	println(bestID)
 	bestMaskLen := int8(-1)
 
 	// Traverse up to 128 bits for IPv6 (or 32 for IPv4).
@@ -127,6 +128,8 @@ func (idx *CIDRIndex) LookupIP(ip net.IP) string {
 		// Check if current node has an id and update best match if mask is longer.
 		if idx.nodes[current].id != -1 && idx.nodes[current].maskLen > bestMaskLen {
 			bestID = idx.nodes[current].id
+			println("i", i, bestID)
+
 			bestMaskLen = idx.nodes[current].maskLen
 		}
 
@@ -142,6 +145,8 @@ func (idx *CIDRIndex) LookupIP(ip net.IP) string {
 	// Check the final node for a better match.
 	if idx.nodes[current].id != -1 && idx.nodes[current].maskLen > bestMaskLen {
 		bestID = idx.nodes[current].id
+		println("final", bestID)
+
 	}
 
 	if bestID == -1 {

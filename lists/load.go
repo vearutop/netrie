@@ -99,26 +99,6 @@ func loadFromTextCB(u string, cb func(value string) error) error {
 	return nil
 }
 
-func loadFromTextGroupIPs(u string, tr *netrie.CIDRIndex, name string) error {
-	var ips []string
-
-	err := loadFromTextCB(u, func(value string) error {
-		ips = append(ips, value)
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	nets := netrie.ClusterIPs(ips)
-
-	for _, n := range nets {
-		tr.AddNet(n, name)
-	}
-
-	return nil
-}
-
 func loadFromTextGroupCIDRs(u string, tr *netrie.CIDRIndex, name string) error {
 	var cidrs []string
 
@@ -130,7 +110,10 @@ func loadFromTextGroupCIDRs(u string, tr *netrie.CIDRIndex, name string) error {
 		return err
 	}
 
-	nets := netrie.MergeCIDRs(cidrs)
+	nets, err := ClusterCIDRs(cidrs)
+	if err != nil {
+		return err
+	}
 
 	for _, n := range nets {
 		tr.AddNet(n, name)
