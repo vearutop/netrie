@@ -10,7 +10,7 @@ import (
 	"github.com/vearutop/netrie"
 )
 
-func LoadCityMMDB(tr *netrie.CIDRIndex, mmdbPath string, makeName func(city geoip2.City) string) error {
+func LoadCityMMDB(tr *netrie.CIDRIndex[int32], mmdbPath string, makeName func(city geoip2.City) string) error {
 	if makeName == nil {
 		makeName = func(city geoip2.City) string {
 			return city.City.Names["en"] + ":" + city.Country.IsoCode + ":" +

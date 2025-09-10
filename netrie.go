@@ -6,45 +6,45 @@ import (
 )
 
 // trieNode represents a node in the CIDR trie.
-type trieNode struct {
+type trieNode[S int16 | int32] struct {
 	children [2]int32 // Indices of child nodes (0 or 1).
-	id       int16    // ID associated with the CIDR, -1 if none.
+	id       S        // ID associated with the CIDR, -1 if none.
 	maskLen  int8     // Length of the CIDR mask, -1 if none.
 }
 
 // CIDRIndex is the trie structure for CIDR lookups.
-type CIDRIndex struct {
-	nodes []trieNode // Slice storing all trie nodes.
+type CIDRIndex[S int16 | int32] struct {
+	nodes []trieNode[S] // Slice storing all trie nodes.
 	names []string
 	total int
 
-	idByName map[string]int16
+	idByName map[string]S
 }
 
 // NewCIDRIndex initializes a new CIDR trie with a root node.
-func NewCIDRIndex() *CIDRIndex {
-	return &CIDRIndex{
-		nodes:    []trieNode{{children: [2]int32{-1, -1}, id: -1, maskLen: -1}},
-		idByName: make(map[string]int16),
+func NewCIDRIndex[S int16 | int32]() *CIDRIndex[S] {
+	return &CIDRIndex[S]{
+		nodes:    []trieNode[S]{{children: [2]int32{-1, -1}, id: -1, maskLen: -1}},
+		idByName: make(map[string]S),
 	}
 }
 
 // Len returns the number of CIDRs in the trie.
-func (idx *CIDRIndex) Len() int {
+func (idx *CIDRIndex[S]) Len() int {
 	return idx.total
 }
 
 // LenNames returns the number of different names in the trie.
-func (idx *CIDRIndex) LenNames() int {
+func (idx *CIDRIndex[S]) LenNames() int {
 	return len(idx.idByName)
 }
 
-func (idx *CIDRIndex) AddNet(ipNet *net.IPNet, name string) {
+func (idx *CIDRIndex[S]) AddNet(ipNet *net.IPNet, name string) {
 	id := idx.idByName[name]
 
 	if id == 0 {
 		idx.names = append(idx.names, name)
-		id = int16(len(idx.names))
+		id = S(len(idx.names))
 		idx.idByName[name] = id
 	}
 
@@ -64,7 +64,7 @@ func (idx *CIDRIndex) AddNet(ipNet *net.IPNet, name string) {
 		if childIndex == -1 {
 			// Create new node.
 			idx.nodes[current].children[bit] = int32(len(idx.nodes))
-			idx.nodes = append(idx.nodes, trieNode{
+			idx.nodes = append(idx.nodes, trieNode[S]{
 				children: [2]int32{-1, -1},
 				id:       -1,
 				maskLen:  -1,
@@ -83,7 +83,7 @@ func (idx *CIDRIndex) AddNet(ipNet *net.IPNet, name string) {
 
 // AddCIDR adds a CIDR with an associated id to the trie.
 // Returns error if CIDR is invalid or overlaps.
-func (idx *CIDRIndex) AddCIDR(cidr string, name string) error {
+func (idx *CIDRIndex[S]) AddCIDR(cidr string, name string) error {
 	_, ipNet, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return fmt.Errorf("invalid CIDR (%s): %v", name, cidr)
@@ -96,7 +96,7 @@ func (idx *CIDRIndex) AddCIDR(cidr string, name string) error {
 
 // Lookup finds the id of the CIDR that contains the given IP string.
 // Returns "" if no matching CIDR is found or IP is invalid.
-func (idx *CIDRIndex) Lookup(ipStr string) string {
+func (idx *CIDRIndex[S]) Lookup(ipStr string) string {
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		return "" // Invalid IP address.
@@ -107,14 +107,14 @@ func (idx *CIDRIndex) Lookup(ipStr string) string {
 
 // LookupIP finds the id of the CIDR that contains the given IP.
 // Returns "" if no matching CIDR is found.
-func (idx *CIDRIndex) LookupIP(ip net.IP) string {
+func (idx *CIDRIndex[S]) LookupIP(ip net.IP) string {
 	// Convert to 16-byte representation, handling IPv4.
 	if ip4 := ip.To4(); ip4 != nil {
 		ip = ip4
 	}
 
 	current := 0
-	bestID := int16(-1)
+	bestID := S(-1)
 	println(bestID)
 	bestMaskLen := int8(-1)
 
