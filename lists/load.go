@@ -8,19 +8,22 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/vearutop/netrie"
 )
 
-func loadFromJSONBruteForce(u string, tr *netrie.CIDRIndex, name string) error {
-	return loadFromJSON(
+// LoadFromJSONBruteForce loads CIDRs from a JSON resource, validating and adding them to the given CIDRIndex.
+// The CIDRs are identified by the specified name.
+// Returns an error if the resource is unreachable, JSON is invalid, or if there are issues with adding CIDRs.
+func LoadFromJSONBruteForce[S int16 | int32](u string, tr *netrie.CIDRIndex[S], name string) error {
+	return LoadFromJSON(
 		u,
 		func(path []string, value interface{}) error {
 			if s, ok := value.(string); ok {
-				_, _, err := net.ParseCIDR(s)
-				if err != nil {
-					return nil
+				if _, _, err := net.ParseCIDR(s); err != nil {
+					return nil //nolint:nilerr // Looking for valid CIDRs in arbitrary values.
 				}
 
 				return tr.AddCIDR(s, name)
@@ -29,56 +32,63 @@ func loadFromJSONBruteForce(u string, tr *netrie.CIDRIndex, name string) error {
 		})
 }
 
-func loadFromJSON(u string, cb func(path []string, value interface{}) error) error {
-	req, err := http.NewRequest(http.MethodGet, u, nil)
+// LoadFromJSON fetches a JSON resource from a URL and processes its scalar values using the provided callback function.
+// Returns an error if the HTTP request, JSON decoding, or callback function execution fails.
+func LoadFromJSON(u string, cb func(path []string, value interface{}) error) error {
+	r, err := makeReader(u)
+	if r != nil {
+		defer r.Close()
+	}
+
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.DefaultTransport.RoundTrip(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad HTTP status code: %d", resp.StatusCode)
-	}
-
-	if err := walkJSON(resp.Body, cb); err != nil {
+	if err := walkJSON(r, cb); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func loadFromTextCB(u string, cb func(value string) error) error {
-	var r io.Reader
+func makeReader(u string) (io.ReadCloser, error) {
 	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 		f, err := os.Open(u)
 		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		r = f
-	} else {
-		req, err := http.NewRequest(http.MethodGet, u, nil)
-		if err != nil {
-			return err
+			return nil, err
 		}
 
-		resp, err := http.DefaultTransport.RoundTrip(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
+		return f, nil
+	}
 
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("bad HTTP status code: %d", resp.StatusCode)
-		}
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
 
-		r = resp.Body
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return resp.Body, fmt.Errorf("bad HTTP status code: %d", resp.StatusCode)
+	}
+
+	return resp.Body, nil
+}
+
+// LoadFromTextCB loads data from a file or URL, processes each non-empty, non-comment line using the provided callback function.
+// The callback receives a sanitized string extracted from each line, and errors from the callback halt further processing.
+// Returns an error if any file operation, HTTP request, or callback execution fails.
+func LoadFromTextCB(u string, cb func(value string) error) error {
+	r, err := makeReader(u)
+	if r != nil {
+		defer r.Close()
+	}
+
+	if err != nil {
+		return err
 	}
 
 	s := bufio.NewScanner(r)
@@ -91,6 +101,8 @@ func loadFromTextCB(u string, cb func(value string) error) error {
 
 		line = strings.SplitN(line, ",", 2)[0]
 
+		line = strings.SplitN(line, " ", 2)[0]
+
 		if err := cb(line); err != nil {
 			return err
 		}
@@ -99,10 +111,11 @@ func loadFromTextCB(u string, cb func(value string) error) error {
 	return nil
 }
 
-func loadFromTextGroupCIDRs(u string, tr *netrie.CIDRIndex, name string) error {
+// LoadFromTextGroupCIDRs loads CIDR ranges or IPs from a source, aggregates them, and adds to a netrie.Adder with a given name.
+func LoadFromTextGroupCIDRs(u string, tr netrie.Adder, name string) error {
 	var cidrs []string
 
-	err := loadFromTextCB(u, func(value string) error {
+	err := LoadFromTextCB(u, func(value string) error {
 		cidrs = append(cidrs, value)
 		return nil
 	})
@@ -122,8 +135,11 @@ func loadFromTextGroupCIDRs(u string, tr *netrie.CIDRIndex, name string) error {
 	return nil
 }
 
-func loadFromText(u string, tr *netrie.CIDRIndex, name string) error {
-	return loadFromTextCB(u, func(s string) error {
+// LoadFromText loads CIDR ranges from a file or URL and adds them to the provided Adder with the specified name.
+// It skips empty lines and comments and halts processing on the first error encountered.
+// Returns an error if reading data, processing lines, or adding CIDRs fails.
+func LoadFromText(u string, tr netrie.Adder, name string) error {
+	return LoadFromTextCB(u, func(s string) error {
 		return tr.AddCIDR(s, name)
 	})
 }
@@ -141,7 +157,7 @@ func walkJSON(r io.Reader, cb func(path []string, value interface{}) error) erro
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("reading token at path %v: %v", path, err)
+			return fmt.Errorf("reading token at path %v: %w", path, err)
 		}
 
 		switch t := token.(type) {
@@ -151,7 +167,7 @@ func walkJSON(r io.Reader, cb func(path []string, value interface{}) error) erro
 				for dec.More() {
 					token, err := dec.Token()
 					if err != nil {
-						return fmt.Errorf("reading field name at path %v: %v", path, err)
+						return fmt.Errorf("reading field name at path %v: %w", path, err)
 					}
 					field, ok := token.(string)
 					if !ok {
@@ -165,11 +181,11 @@ func walkJSON(r io.Reader, cb func(path []string, value interface{}) error) erro
 				}
 				// Consume closing '}'
 				if _, err := dec.Token(); err != nil {
-					return fmt.Errorf("reading object end at path %v: %v", path, err)
+					return fmt.Errorf("reading object end at path %v: %w", path, err)
 				}
 			case '[': // Array
 				for i := 0; dec.More(); i++ {
-					path = append(path, fmt.Sprintf("%d", i))
+					path = append(path, strconv.Itoa(i))
 					if err := traverse(); err != nil {
 						return err
 					}
@@ -177,7 +193,7 @@ func walkJSON(r io.Reader, cb func(path []string, value interface{}) error) erro
 				}
 				// Consume closing ']'
 				if _, err := dec.Token(); err != nil {
-					return fmt.Errorf("reading array end at path %v: %v", path, err)
+					return fmt.Errorf("reading array end at path %v: %w", path, err)
 				}
 			}
 		default: // Scalar (string, number, bool, null)

@@ -1,8 +1,10 @@
+// Package netrie implements high performance CIDR index.
 package netrie
 
 import (
 	"bufio"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -63,17 +65,43 @@ func (n *trieNode[S]) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// Save writes the CIDRIndex data to the given io.Writer, including metadata, nodes, and associated names.
 func (idx *CIDRIndex[S]) Save(w io.Writer) error {
-	// Write header: total (int32), nodesLen (int32), namesLen (int32)
-	header := make([]byte, 12)
-	binary.BigEndian.PutUint32(header[0:4], uint32(idx.total))
-	binary.BigEndian.PutUint32(header[4:8], uint32(len(idx.nodes)))
-	binary.BigEndian.PutUint32(header[8:12], uint32(len(idx.names)))
+	var s S
+
+	// Write header: version (int32), total (int32), nodesLen (int32), namesLen (int32)
+	header := make([]byte, 16)
+
+	ver := uint32(1) // Version 1.
+
+	// Switch bit 31 to indicate large namespace.
+	if _, ok := any(s).(int32); ok {
+		ver |= 1 << 31
+	}
+
+	binary.BigEndian.PutUint32(header[0:4], ver)
+	binary.BigEndian.PutUint32(header[4:8], uint32(idx.total))
+	binary.BigEndian.PutUint32(header[8:12], uint32(len(idx.nodes)))
+	binary.BigEndian.PutUint32(header[12:16], uint32(len(idx.names)))
 	if _, err := w.Write(header); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
-	var s S
+	// Write the .Metadata field as JSON with its length as a prefix
+	metadataJSON, err := json.Marshal(idx.meta)
+	if err != nil {
+		return fmt.Errorf("failed to encode .Metadata: %w", err)
+	}
+	metadataLenBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(metadataLenBuf, uint32(len(metadataJSON)))
+
+	if _, err := w.Write(metadataLenBuf); err != nil {
+		return fmt.Errorf("failed to write .Metadata length: %w", err)
+	}
+
+	if _, err := w.Write(metadataJSON); err != nil {
+		return fmt.Errorf("failed to write .Metadata: %w", err)
+	}
 
 	switch any(s).(type) {
 	case int16:
@@ -142,20 +170,64 @@ func (idx *CIDRIndex[S]) SaveToFile(filename string) error {
 	return nil
 }
 
-func (idx *CIDRIndex[S]) Load(r io.Reader) error {
-	// Read header: total (int32), nodesLen (int32), namesLen (int32)
-	header := make([]byte, 12)
+// Load initializes and returns an IPLookuper by reading and parsing data from the provided io.Reader.
+// Returns an error if the input data is invalid or the operation fails.
+func Load(r io.Reader) (IPLookuper, error) {
+	// Read header: version (uint32), total (uint32), nodesLen (uint32), namesLen (uint32)
+	header := make([]byte, 16)
 	if _, err := io.ReadFull(r, header); err != nil {
-		return fmt.Errorf("read header: %w", err)
+		return nil, fmt.Errorf("read header: %w", err)
 	}
-	total := int(binary.BigEndian.Uint32(header[0:4]))
-	nodesLen := int(binary.BigEndian.Uint32(header[4:8]))
-	namesLen := int(binary.BigEndian.Uint32(header[8:12]))
+	ver := binary.BigEndian.Uint32(header[0:4])
+	total := binary.BigEndian.Uint32(header[4:8])
+	nodesLen := binary.BigEndian.Uint32(header[8:12])
+	namesLen := binary.BigEndian.Uint32(header[12:16])
 
+	hasLargeNamespace := (ver & (1 << 31)) != 0
+	ver &^= 1 << 31 // Remove large namespace flag.
+
+	if ver != 1 {
+		return nil, fmt.Errorf("invalid version: %d", ver)
+	}
+
+	if hasLargeNamespace {
+		idx := NewCIDRLargeIndex()
+		if err := idx.load(total, nodesLen, namesLen, r); err != nil {
+			return nil, err
+		}
+
+		return idx, nil
+	}
+
+	idx := NewCIDRIndex()
+	if err := idx.load(total, nodesLen, namesLen, r); err != nil {
+		return nil, err
+	}
+	return idx, nil
+}
+
+func (idx *CIDRIndex[S]) load(total, nodesLen, namesLen uint32, r io.Reader) error {
 	// Initialize CIDRIndex fields
-	idx.total = total
+	idx.total = int(total)
 	idx.nodes = make([]trieNode[S], nodesLen)
 	idx.names = make([]string, namesLen)
+
+	// Read Metadata
+	metadataLenBuf := make([]byte, 4)
+	if _, err := io.ReadFull(r, metadataLenBuf); err != nil {
+		return fmt.Errorf("read metadata length: %w", err)
+	}
+	metadataLen := int(binary.BigEndian.Uint32(metadataLenBuf))
+
+	if metadataLen > 0 {
+		metadataBuf := make([]byte, metadataLen)
+		if _, err := io.ReadFull(r, metadataBuf); err != nil {
+			return fmt.Errorf("read metadata: %w", err)
+		}
+		if err := json.Unmarshal(metadataBuf, &idx.meta); err != nil {
+			return fmt.Errorf("unmarshal metadata: %w", err)
+		}
+	}
 
 	var s S
 
@@ -163,7 +235,7 @@ func (idx *CIDRIndex[S]) Load(r io.Reader) error {
 	case int16:
 		// Read nodes
 		nodeBuf := make([]byte, 11)
-		for i := 0; i < nodesLen; i++ {
+		for i := 0; i < int(nodesLen); i++ {
 			if _, err := io.ReadFull(r, nodeBuf); err != nil {
 				return fmt.Errorf("read node %d: %w", i, err)
 			}
@@ -174,7 +246,7 @@ func (idx *CIDRIndex[S]) Load(r io.Reader) error {
 	case int32:
 		// Read nodes
 		nodeBuf := make([]byte, 13)
-		for i := 0; i < nodesLen; i++ {
+		for i := 0; i < int(nodesLen); i++ {
 			if _, err := io.ReadFull(r, nodeBuf); err != nil {
 				return fmt.Errorf("read node %d: %w", i, err)
 			}
@@ -185,7 +257,7 @@ func (idx *CIDRIndex[S]) Load(r io.Reader) error {
 	}
 
 	// Read names
-	for i := 0; i < namesLen; i++ {
+	for i := 0; i < int(namesLen); i++ {
 		// Read string length (int32)
 		nameLenBuf := make([]byte, 4)
 		if _, err := io.ReadFull(r, nameLenBuf); err != nil {
@@ -207,14 +279,14 @@ func (idx *CIDRIndex[S]) Load(r io.Reader) error {
 }
 
 // LoadFromFile loads the CIDRIndex from a file.
-func (idx *CIDRIndex[S]) LoadFromFile(filename string) error {
+func LoadFromFile(filename string) (IPLookuper, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
 	r := bufio.NewReader(file)
 
-	return idx.Load(r)
+	return Load(r)
 }

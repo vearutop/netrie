@@ -3,7 +3,24 @@ package netrie
 import (
 	"fmt"
 	"net"
+	"time"
 )
+
+// Adder is an interface for adding IP networks or CIDR ranges to a data structure with associated names.
+type Adder interface {
+	AddNet(ipNet *net.IPNet, name string)
+	AddCIDR(cidr string, name string) error
+	Metadata() *Metadata
+}
+
+// IPLookuper defines methods to lookup and retrieve information for a given IP or IP string from a CIDR-based structure.
+type IPLookuper interface {
+	LookupIP(ip net.IP) string
+	Lookup(ipStr string) string
+	Len() int
+	LenNames() int
+	Metadata() *Metadata
+}
 
 // trieNode represents a node in the CIDR trie.
 type trieNode[S int16 | int32] struct {
@@ -12,8 +29,17 @@ type trieNode[S int16 | int32] struct {
 	maskLen  int8     // Length of the CIDR mask, -1 if none.
 }
 
+// Metadata represents additional information related to a structure or process.
+type Metadata struct {
+	BuildDate   time.Time `json:"build_date,omitzero"`
+	Description string    `json:"description,omitempty"`
+	Extra       any       `json:"extra,omitempty"`
+}
+
 // CIDRIndex is the trie structure for CIDR lookups.
 type CIDRIndex[S int16 | int32] struct {
+	meta Metadata
+
 	nodes []trieNode[S] // Slice storing all trie nodes.
 	names []string
 	total int
@@ -21,12 +47,26 @@ type CIDRIndex[S int16 | int32] struct {
 	idByName map[string]S
 }
 
-// NewCIDRIndex initializes a new CIDR trie with a root node.
-func NewCIDRIndex[S int16 | int32]() *CIDRIndex[S] {
+// NewCIDRLargeIndex initializes a new CIDR trie with a root node for up to 2^32 networks.
+func NewCIDRLargeIndex() *CIDRIndex[int32] {
+	return newCIDRIndex[int32]()
+}
+
+// NewCIDRIndex initializes a new CIDR trie with a root node for up to 2^16 networks.
+func NewCIDRIndex() *CIDRIndex[int16] {
+	return newCIDRIndex[int16]()
+}
+
+func newCIDRIndex[S int16 | int32]() *CIDRIndex[S] {
 	return &CIDRIndex[S]{
 		nodes:    []trieNode[S]{{children: [2]int32{-1, -1}, id: -1, maskLen: -1}},
 		idByName: make(map[string]S),
 	}
+}
+
+// Metadata returns a reference to the Metadata object associated with the CIDRIndex.
+func (idx *CIDRIndex[S]) Metadata() *Metadata {
+	return &idx.meta
 }
 
 // Len returns the number of CIDRs in the trie.
@@ -39,6 +79,7 @@ func (idx *CIDRIndex[S]) LenNames() int {
 	return len(idx.idByName)
 }
 
+// AddNet inserts a CIDR block represented by ipNet into the trie, associating it with the specified name.
 func (idx *CIDRIndex[S]) AddNet(ipNet *net.IPNet, name string) {
 	id := idx.idByName[name]
 
@@ -115,7 +156,6 @@ func (idx *CIDRIndex[S]) LookupIP(ip net.IP) string {
 
 	current := 0
 	bestID := S(-1)
-	println(bestID)
 	bestMaskLen := int8(-1)
 
 	// Traverse up to 128 bits for IPv6 (or 32 for IPv4).
@@ -128,8 +168,6 @@ func (idx *CIDRIndex[S]) LookupIP(ip net.IP) string {
 		// Check if current node has an id and update best match if mask is longer.
 		if idx.nodes[current].id != -1 && idx.nodes[current].maskLen > bestMaskLen {
 			bestID = idx.nodes[current].id
-			println("i", i, bestID)
-
 			bestMaskLen = idx.nodes[current].maskLen
 		}
 
@@ -145,8 +183,6 @@ func (idx *CIDRIndex[S]) LookupIP(ip net.IP) string {
 	// Check the final node for a better match.
 	if idx.nodes[current].id != -1 && idx.nodes[current].maskLen > bestMaskLen {
 		bestID = idx.nodes[current].id
-		println("final", bestID)
-
 	}
 
 	if bestID == -1 {

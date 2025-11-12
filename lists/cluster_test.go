@@ -7,7 +7,7 @@ import (
 )
 
 func toCIDRs(strs []string) []*net.IPNet {
-	var cidrs []*net.IPNet
+	cidrs := make([]*net.IPNet, 0, len(strs))
 	for _, s := range strs {
 		n, err := parseIPOrCIDR(s)
 		if err != nil {
@@ -19,7 +19,7 @@ func toCIDRs(strs []string) []*net.IPNet {
 }
 
 func cidrsToStrings(cidrs []*net.IPNet) []string {
-	var out []string
+	out := make([]string, 0, len(cidrs))
 	for _, c := range cidrs {
 		out = append(out, c.String())
 	}
@@ -170,15 +170,6 @@ func TestClusterCIDRs(t *testing.T) {
 			expected: []string{"192.168.0.0/24"},
 			err:      false,
 		},
-		//{
-		//	name: "Overlapping IPv4 CIDRs",
-		//	input: []string{
-		//		"192.168.1.0/30",
-		//		"192.168.1.0/31",
-		//	},
-		//	expected: []string{"192.168.1.0/30"},
-		//	err:      false,
-		//},
 		{
 			name: "IPv4 full range",
 			input: []string{

@@ -1,3 +1,4 @@
+// Package lists provides helpers to load CIDR items from CSV, JSON and texts.
 package lists
 
 import (
@@ -26,12 +27,12 @@ func parseIPOrCIDR(s string) (*net.IPNet, error) {
 
 // ClusterCIDRs takes IPs or CIDRs and returns minimal set of aggregated CIDRs.
 func ClusterCIDRs(input []string) ([]*net.IPNet, error) {
-	var nets []*net.IPNet
+	nets := make([]*net.IPNet, 0, len(input))
 
 	for _, s := range input {
 		ipNet, err := parseIPOrCIDR(s)
 		if err != nil {
-			return nil, fmt.Errorf("parse error for %q: %v", s, err)
+			return nil, fmt.Errorf("parse error for %q: %w", s, err)
 		}
 
 		nets = append(nets, ipNet)

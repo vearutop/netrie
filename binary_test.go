@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTrieNode_MarshalBinary(t *testing.T) {
-	tn := trieNode{
+func TestTrieNode_MarshalBinary_int16(t *testing.T) {
+	tn := trieNode[int16]{
 		children: [2]int32{5678, 1234},
 		id:       3456,
 		maskLen:  68,
@@ -19,7 +19,7 @@ func TestTrieNode_MarshalBinary(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, b, 11)
 
-	tn2 := trieNode{}
+	tn2 := trieNode[int16]{}
 	require.NoError(t, tn2.UnmarshalBinary(b))
 
 	assert.Equal(t, tn.children, tn2.children)
@@ -48,8 +48,8 @@ func TestCIDRIndex_Load(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	require.NoError(t, tr.Save(buf))
 
-	tr2 := NewCIDRIndex()
-	require.NoError(t, tr2.Load(buf))
+	tr2, err := Load(buf)
+	require.NoError(t, err)
 
 	assert.Equal(t, 4, tr2.Len())
 	assert.Equal(t, 4, tr2.LenNames())

@@ -7,48 +7,4 @@
 ![Code lines](https://sloc.xyz/github/vearutop/netrie/?category=code)
 ![Comments](https://sloc.xyz/github/vearutop/netrie/?category=comments)
 
-<!--- TODO Update README.md -->
-
-Project template with GitHub actions for Go.
-
-Cloud IP aggregated sources:
-https://github.com/femueller/cloud-ip-ranges
-https://github.com/disposable/cloud-ip-ranges
-
-## Install
-
-```
-go install github.com/vearutop/netrie@latest
-$(go env GOPATH)/bin/netrie --help
-```
-
-Or download binary from [releases](https://github.com/vearutop/netrie/releases).
-
-### Linux AMD64
-
-```
-wget https://github.com/vearutop/netrie/releases/latest/download/linux_amd64.tar.gz && tar xf linux_amd64.tar.gz && rm linux_amd64.tar.gz
-./netrie -version
-```
-
-### Macos Intel
-
-```
-wget https://github.com/vearutop/netrie/releases/latest/download/darwin_amd64.tar.gz && tar xf darwin_amd64.tar.gz && rm darwin_amd64.tar.gz
-codesign -s - ./netrie
-./netrie -version
-```
-
-### Macos Apple Silicon (M1, etc...)
-
-```
-wget https://github.com/vearutop/netrie/releases/latest/download/darwin_arm64.tar.gz && tar xf darwin_arm64.tar.gz && rm darwin_arm64.tar.gz
-codesign -s - ./netrie
-./netrie -version
-```
-
-
-## Usage
-
-Create a new repository from this template, check out it and run `./run_me.sh` to replace template name with name of
-your repository.
+In-memory CIDR index.

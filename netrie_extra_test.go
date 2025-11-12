@@ -1,6 +1,7 @@
 package netrie
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"testing"
@@ -42,7 +43,7 @@ func TestAddCIDR_IPv4(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("%s_%s", tt.cidr, tt.name), func(t *testing.T) {
 			err := idx.AddCIDR(tt.cidr, tt.name)
-			if err != tt.err {
+			if !errors.Is(err, tt.err) {
 				t.Errorf("Expected error %v, got %v", tt.err, err)
 			}
 			if idx.Len() != i+1 {
@@ -68,7 +69,7 @@ func TestAddCIDR_IPv6(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("%s_%s", tt.cidr, tt.name), func(t *testing.T) {
 			err := idx.AddCIDR(tt.cidr, tt.name)
-			if err != tt.err {
+			if !errors.Is(err, tt.err) {
 				t.Errorf("Expected error %v, got %v", tt.err, err)
 			}
 			if idx.Len() != i+1 {
