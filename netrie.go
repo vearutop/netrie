@@ -22,6 +22,16 @@ type IPLookuper interface {
 	Metadata() *Metadata
 }
 
+// SafeIPLookuper defines methods to lookup and retrieve information for a given IP or IP string from a CIDR-based structure.
+type SafeIPLookuper interface {
+	SafeLookupIP(ip net.IP) (string, error)
+	LookupIP(ip net.IP) string
+	Lookup(ipStr string) string
+	Len() int
+	LenNames() int
+	Metadata() *Metadata
+}
+
 // trieNode represents a node in the CIDR trie.
 type trieNode[S int16 | int32] struct {
 	children [2]int32 // Indices of child nodes (0 or 1).

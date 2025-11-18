@@ -1,6 +1,7 @@
 package mmdb_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,6 +32,14 @@ func TestLoadMMDB_city(t *testing.T) {
 	tr2, err := netrie.LoadFromFile("testdata/cities.bin")
 	require.NoError(t, err)
 	assertTr(t, tr2)
+
+	f, err := os.Open("testdata/cities.bin")
+	require.NoError(t, err)
+	defer f.Close()
+
+	tr3, err := netrie.Open(f)
+	require.NoError(t, err)
+	assertTr(t, tr3)
 }
 
 func TestLoadMMDB_country(t *testing.T) {
@@ -55,6 +64,14 @@ func TestLoadMMDB_country(t *testing.T) {
 	tr2, err := netrie.LoadFromFile("testdata/countries.bin")
 	require.NoError(t, err)
 	assertTr(t, tr2)
+
+	f, err := os.Open("testdata/countries.bin")
+	require.NoError(t, err)
+	defer f.Close()
+
+	tr3, err := netrie.Open(f)
+	require.NoError(t, err)
+	assertTr(t, tr3)
 }
 
 func TestLoadMMDB_asn(t *testing.T) {
@@ -81,4 +98,12 @@ func TestLoadMMDB_asn(t *testing.T) {
 	tr2, err := netrie.LoadFromFile("testdata/asns.bin")
 	require.NoError(t, err)
 	assertTr(t, tr2)
+
+	f, err := os.Open("testdata/asns.bin")
+	require.NoError(t, err)
+	defer f.Close()
+
+	tr3, err := netrie.Open(f)
+	require.NoError(t, err)
+	assertTr(t, tr3)
 }
