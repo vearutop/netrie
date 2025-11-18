@@ -170,29 +170,75 @@ func (idx *CIDRIndex[S]) SaveToFile(filename string) error {
 	return nil
 }
 
+type hd struct {
+	ver         uint32
+	total       uint32
+	nodesLen    uint32
+	namesLen    uint32
+	metadataLen uint32
+	meta        Metadata
+
+	hasLargeNamespace bool
+	nodeSize          int64
+}
+
+func (h *hd) UnmarshalBinary(data []byte) error {
+	if len(data) != 20 {
+		return fmt.Errorf("insufficient data: got %d bytes, need 20", len(data))
+	}
+
+	h.ver = binary.BigEndian.Uint32(data[0:4])
+	h.total = binary.BigEndian.Uint32(data[4:8])
+	h.nodesLen = binary.BigEndian.Uint32(data[8:12])
+	h.namesLen = binary.BigEndian.Uint32(data[12:16])
+	h.metadataLen = binary.BigEndian.Uint32(data[16:20])
+
+	h.hasLargeNamespace = (h.ver & (1 << 31)) != 0
+	h.ver &^= 1 << 31 // Remove large namespace flag.
+
+	if h.hasLargeNamespace {
+		h.nodeSize = 13
+	} else {
+		h.nodeSize = 11
+	}
+
+	if h.ver != 1 {
+		return fmt.Errorf("invalid version: %d", h.ver)
+	}
+
+	return nil
+}
+
 // Load initializes and returns an IPLookuper by reading and parsing data from the provided io.Reader.
 // Returns an error if the input data is invalid or the operation fails.
 func Load(r io.Reader) (IPLookuper, error) {
-	// Read header: version (uint32), total (uint32), nodesLen (uint32), namesLen (uint32)
-	header := make([]byte, 16)
+	// Read header: version (uint32), total (uint32), nodesLen (uint32), namesLen (uint32), metadataLen (uint32)
+	header := make([]byte, 20)
 	if _, err := io.ReadFull(r, header); err != nil {
 		return nil, fmt.Errorf("read header: %w", err)
 	}
-	ver := binary.BigEndian.Uint32(header[0:4])
-	total := binary.BigEndian.Uint32(header[4:8])
-	nodesLen := binary.BigEndian.Uint32(header[8:12])
-	namesLen := binary.BigEndian.Uint32(header[12:16])
 
-	hasLargeNamespace := (ver & (1 << 31)) != 0
-	ver &^= 1 << 31 // Remove large namespace flag.
-
-	if ver != 1 {
-		return nil, fmt.Errorf("invalid version: %d", ver)
+	h := hd{}
+	if err := h.UnmarshalBinary(header); err != nil {
+		return nil, fmt.Errorf("unmarshal header: %w", err)
 	}
 
-	if hasLargeNamespace {
+	if h.metadataLen > 0 {
+		metadataBuf := make([]byte, h.metadataLen)
+
+		if _, err := io.ReadFull(r, metadataBuf); err != nil {
+			return nil, fmt.Errorf("read metadata: %w", err)
+		}
+
+		if err := json.Unmarshal(metadataBuf, &h.meta); err != nil {
+			return nil, fmt.Errorf("unmarshal metadata: %w", err)
+		}
+	}
+
+	if h.hasLargeNamespace {
 		idx := NewCIDRLargeIndex()
-		if err := idx.load(total, nodesLen, namesLen, r); err != nil {
+
+		if err := idx.load(h, r); err != nil {
 			return nil, err
 		}
 
@@ -200,64 +246,35 @@ func Load(r io.Reader) (IPLookuper, error) {
 	}
 
 	idx := NewCIDRIndex()
-	if err := idx.load(total, nodesLen, namesLen, r); err != nil {
+
+	if err := idx.load(h, r); err != nil {
 		return nil, err
 	}
+
 	return idx, nil
 }
 
-func (idx *CIDRIndex[S]) load(total, nodesLen, namesLen uint32, r io.Reader) error {
+func (idx *CIDRIndex[S]) load(h hd, r io.Reader) error {
+	idx.meta = h.meta
+
 	// Initialize CIDRIndex fields
-	idx.total = int(total)
-	idx.nodes = make([]trieNode[S], nodesLen)
-	idx.names = make([]string, namesLen)
+	idx.total = int(h.total)
+	idx.nodes = make([]trieNode[S], h.nodesLen)
+	idx.names = make([]string, h.namesLen)
 
-	// Read Metadata
-	metadataLenBuf := make([]byte, 4)
-	if _, err := io.ReadFull(r, metadataLenBuf); err != nil {
-		return fmt.Errorf("read metadata length: %w", err)
-	}
-	metadataLen := int(binary.BigEndian.Uint32(metadataLenBuf))
-
-	if metadataLen > 0 {
-		metadataBuf := make([]byte, metadataLen)
-		if _, err := io.ReadFull(r, metadataBuf); err != nil {
-			return fmt.Errorf("read metadata: %w", err)
+	// Read nodes
+	nodeBuf := make([]byte, h.nodeSize)
+	for i := 0; i < int(h.nodesLen); i++ {
+		if _, err := io.ReadFull(r, nodeBuf); err != nil {
+			return fmt.Errorf("read node %d: %w", i, err)
 		}
-		if err := json.Unmarshal(metadataBuf, &idx.meta); err != nil {
-			return fmt.Errorf("unmarshal metadata: %w", err)
-		}
-	}
-
-	var s S
-
-	switch any(s).(type) {
-	case int16:
-		// Read nodes
-		nodeBuf := make([]byte, 11)
-		for i := 0; i < int(nodesLen); i++ {
-			if _, err := io.ReadFull(r, nodeBuf); err != nil {
-				return fmt.Errorf("read node %d: %w", i, err)
-			}
-			if err := idx.nodes[i].UnmarshalBinary(nodeBuf); err != nil {
-				return fmt.Errorf("unmarshal node %d: %w", i, err)
-			}
-		}
-	case int32:
-		// Read nodes
-		nodeBuf := make([]byte, 13)
-		for i := 0; i < int(nodesLen); i++ {
-			if _, err := io.ReadFull(r, nodeBuf); err != nil {
-				return fmt.Errorf("read node %d: %w", i, err)
-			}
-			if err := idx.nodes[i].UnmarshalBinary(nodeBuf); err != nil {
-				return fmt.Errorf("unmarshal node %d: %w", i, err)
-			}
+		if err := idx.nodes[i].UnmarshalBinary(nodeBuf); err != nil {
+			return fmt.Errorf("unmarshal node %d: %w", i, err)
 		}
 	}
 
 	// Read names
-	for i := 0; i < int(namesLen); i++ {
+	for i := 0; i < int(h.namesLen); i++ {
 		// Read string length (int32)
 		nameLenBuf := make([]byte, 4)
 		if _, err := io.ReadFull(r, nameLenBuf); err != nil {
