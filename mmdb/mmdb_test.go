@@ -27,6 +27,13 @@ func TestLoadMMDB_city(t *testing.T) {
 	require.NoError(t, mmdb.LoadMMDB(tr, "testdata/GeoIP2-City-Test.mmdb", mmdb.CityCountryISOCode))
 	assertTr(t, tr)
 
+	assert.Equal(t, 1486, tr.LenNodes())
+
+	tr.Minimize()
+	assertTr(t, tr)
+
+	assert.Equal(t, 769, tr.LenNodes())
+
 	require.NoError(t, tr.SaveToFile("testdata/cities.bin"))
 
 	tr2, err := netrie.LoadFromFile("testdata/cities.bin")
@@ -58,6 +65,13 @@ func TestLoadMMDB_country(t *testing.T) {
 
 	require.NoError(t, mmdb.LoadMMDB(tr, "testdata/GeoLite2-Country-Test.mmdb", mmdb.CountryISOCode))
 	assertTr(t, tr)
+
+	assert.Equal(t, 1434, tr.LenNodes())
+
+	tr.Minimize()
+	assertTr(t, tr)
+
+	assert.Equal(t, 714, tr.LenNodes())
 
 	require.NoError(t, tr.SaveToFile("testdata/countries.bin"))
 
@@ -92,6 +106,13 @@ func TestLoadMMDB_asn(t *testing.T) {
 
 	require.NoError(t, mmdb.LoadMMDB(tr, "testdata/GeoLite2-ASN-Test.mmdb", mmdb.ASNOrg))
 	assertTr(t, tr)
+
+	assert.Equal(t, 1434, tr.LenNodes())
+
+	tr.Minimize()
+	assertTr(t, tr)
+
+	assert.Equal(t, 1208, tr.LenNodes())
 
 	require.NoError(t, tr.SaveToFile("testdata/asns.bin"))
 

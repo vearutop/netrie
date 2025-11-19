@@ -2,6 +2,7 @@ package netrie_test
 
 import (
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,13 +13,24 @@ import (
 func TestLoadFromFile(t *testing.T) {
 	assertTr := func(t *testing.T, tr netrie.IPLookuper) {
 		t.Helper()
-		assert.Equal(t, 250, tr.Len())
-		assert.Equal(t, 55, tr.LenNames())
-		assert.Equal(t, "GB:Boxford", tr.Lookup("2.125.160.217"))
-		assert.Equal(t, "GB:London", tr.Lookup("81.2.69.145"))
-		assert.Equal(t, "US:San Diego", tr.Lookup("2001:480:10::1"))
-		assert.Equal(t, "", tr.Lookup("143.198.196.44"))
-		assert.Equal(t, "2025-08-12 17:49:01 +0000 UTC", tr.Metadata().BuildDate.String())
+
+		wg := sync.WaitGroup{}
+		wg.Add(100)
+
+		for i := 0; i < 100; i++ {
+			go func() {
+				defer wg.Done()
+				assert.Equal(t, 250, tr.Len())
+				assert.Equal(t, 55, tr.LenNames())
+				assert.Equal(t, "GB:Boxford", tr.Lookup("2.125.160.217"))
+				assert.Equal(t, "GB:London", tr.Lookup("81.2.69.145"))
+				assert.Equal(t, "US:San Diego", tr.Lookup("2001:480:10::1"))
+				assert.Equal(t, "", tr.Lookup("143.198.196.44"))
+				assert.Equal(t, "2025-08-12 17:49:01 +0000 UTC", tr.Metadata().BuildDate.String())
+			}()
+		}
+
+		wg.Wait()
 	}
 
 	tr2, err := netrie.LoadFromFile("testdata/cities.bin")
