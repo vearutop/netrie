@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 )
 
 // CIDRIndexFile is the trie structure for CIDR lookups.
 type CIDRIndexFile[S int16 | int32] struct {
 	meta Metadata
 
-	r           io.ReaderAt
+	mu sync.Mutex
+	r  io.ReaderAt
+
 	nodesOffset int64
 	nodeSize    int64
 	nodesLen    int64
@@ -100,8 +103,6 @@ func (idx *CIDRIndexFile[S]) readNames() error {
 }
 
 func (idx *CIDRIndexFile[S]) readNode(r io.ReaderAt, id int64, b []byte) (trieNode[S], error) {
-	// b := make([]byte, idx.nodeSize)
-
 	n, err := r.ReadAt(b, idx.nodesOffset+id*idx.nodeSize)
 	if err != nil {
 		return trieNode[S]{}, fmt.Errorf("read node %d: %w", id, err)
@@ -122,6 +123,9 @@ func (idx *CIDRIndexFile[S]) readNode(r io.ReaderAt, id int64, b []byte) (trieNo
 // LookupIP finds the id of the CIDR that contains the given IP.
 // Returns "" if no matching CIDR is found.
 func (idx *CIDRIndexFile[S]) lookupIP(ip net.IP) (string, error) {
+	idx.mu.Lock()
+	defer idx.mu.Unlock()
+
 	// Convert to 16-byte representation, handling IPv4.
 	if ip4 := ip.To4(); ip4 != nil {
 		ip = ip4
