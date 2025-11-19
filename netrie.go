@@ -194,15 +194,14 @@ func (idx *CIDRIndex[S]) Minimize() {
 	finalRoot := remap[0]
 	if finalRoot != 0 {
 		// Swap root node to position 0
-		rootNode := minimal[finalRoot]
-		// Move old root out of the way temporarily
-		minimal[finalRoot] = minimal[0]
-		minimal[0] = rootNode
+		minimal[finalRoot], minimal[0] = minimal[0], minimal[finalRoot]
+
 		// Fix up all references to the swapped nodes
 		for i := range remap {
-			if remap[i] == 0 {
+			switch remap[i] {
+			case 0:
 				remap[i] = finalRoot
-			} else if remap[i] == finalRoot {
+			case finalRoot:
 				remap[i] = 0
 			}
 		}
