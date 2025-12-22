@@ -24,7 +24,7 @@ func TestLoadMMDB_city(t *testing.T) {
 		assert.Equal(t, "2025-08-12 17:49:01 +0000 UTC", tr.Metadata().BuildDate.String())
 	}
 
-	require.NoError(t, mmdb.LoadMMDB(tr, "testdata/GeoIP2-City-Test.mmdb", mmdb.CityCountryISOCode))
+	require.NoError(t, mmdb.Load(tr, "testdata/GeoIP2-City-Test.mmdb", mmdb.CityCountryISOCode))
 	assertTr(t, tr)
 
 	assert.Equal(t, 1486, tr.LenNodes())
@@ -63,7 +63,7 @@ func TestLoadMMDB_country(t *testing.T) {
 		assert.Equal(t, "2025-08-12 17:49:01 +0000 UTC", tr.Metadata().BuildDate.String())
 	}
 
-	require.NoError(t, mmdb.LoadMMDB(tr, "testdata/GeoLite2-Country-Test.mmdb", mmdb.CountryISOCode))
+	require.NoError(t, mmdb.Load(tr, "testdata/GeoLite2-Country-Test.mmdb", mmdb.CountryISOCode))
 	assertTr(t, tr)
 
 	assert.Equal(t, 1434, tr.LenNodes())
@@ -104,7 +104,7 @@ func TestLoadMMDB_asn(t *testing.T) {
 		assert.Equal(t, "ASNs", tr.Metadata().Description)
 	}
 
-	require.NoError(t, mmdb.LoadMMDB(tr, "testdata/GeoLite2-ASN-Test.mmdb", mmdb.ASNOrg))
+	require.NoError(t, mmdb.Load(tr, "testdata/GeoLite2-ASN-Test.mmdb", mmdb.ASNOrg))
 	assertTr(t, tr)
 
 	assert.Equal(t, 1434, tr.LenNodes())

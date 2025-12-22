@@ -100,9 +100,9 @@ type Options struct {
 	PrintProgress bool
 }
 
-// LoadMMDB loads MaxMind DB (MMDB) data into a trie structure, processing networks grouped by unique value names.
+// Load loads MaxMind DB (MMDB) data into a trie structure, processing networks grouped by unique value names.
 // It utilizes a custom function to extract values and names from database records.
-func LoadMMDB(tr netrie.Adder, mmdbPath string, options ...func(o *Options)) error {
+func Load(tr netrie.Adder, mmdbPath string, options ...func(o *Options)) error {
 	o := &Options{}
 
 	for _, opt := range options {
