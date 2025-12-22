@@ -12,6 +12,7 @@ import (
 	"github.com/vearutop/netrie"
 )
 
+// AnonymousIP configures the Options object to extract and process anonymous IP-related attributes from MaxMind DB records.
 func AnonymousIP(o *Options) {
 	o.MakeValueName = func() (any, func() string) {
 		var v any
