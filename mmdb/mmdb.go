@@ -12,6 +12,32 @@ import (
 	"github.com/vearutop/netrie"
 )
 
+func AnonymousIP(o *Options) {
+	o.MakeValueName = func() (any, func() string) {
+		var v any
+		return &v, func() string {
+			// {"is_anonymous":true,"is_anonymous_vpn":true,"is_hosting_provider":true,"is_public_proxy":true,"is_residential_proxy":true,"is_tor_exit_node":true}
+
+			var res string
+
+			for _, k := range []string{
+				"is_anonymous", "is_anonymous_vpn", "is_hosting_provider", "is_public_proxy",
+				"is_residential_proxy", "is_tor_exit_node",
+			} {
+				if b, _ := RetrieveValue(v, k).(bool); b {
+					res += k + ":"
+				}
+			}
+
+			if res == "" {
+				return ""
+			}
+
+			return res[:len(res)-1]
+		}
+	}
+}
+
 // CountryISOCode configures the Options to extract the ISO country code from a MaxMind DB record.
 // If no code is found, "??" is used.
 func CountryISOCode(o *Options) {
@@ -129,7 +155,12 @@ func Load(tr netrie.Adder, mmdbPath string, options ...func(o *Options)) error {
 		_ = db.Close() //
 	}()
 
-	tr.Metadata().BuildDate = time.Unix(int64(db.Metadata.BuildEpoch), 0).UTC()
+	meta := tr.Metadata()
+	meta.BuildDate = time.Unix(int64(db.Metadata.BuildEpoch), 0).UTC()
+	if meta.Description == "" {
+		meta.Description = db.Metadata.Description["en"]
+	}
+	meta.Extra = db.Metadata
 
 	// skip aliased networks
 	networks := db.Networks(maxminddb.SkipAliasedNetworks)

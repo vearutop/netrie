@@ -128,3 +128,41 @@ func TestLoadMMDB_asn(t *testing.T) {
 	require.NoError(t, err)
 	assertTr(t, tr3)
 }
+
+func TestLoadMMDB_anon(t *testing.T) {
+	tr := netrie.NewCIDRIndex()
+
+	assertTr := func(t *testing.T, tr netrie.IPLookuper) {
+		t.Helper()
+		assert.Equal(t, 571, tr.Len())
+		assert.Equal(t, 7, tr.LenNames())
+		assert.Equal(t, "is_anonymous:is_anonymous_vpn:is_hosting_provider:is_public_proxy:is_residential_proxy:is_tor_exit_node", tr.Lookup("81.2.69.145"))
+		assert.Equal(t, "", tr.Lookup("2001:480:10::1"))
+		assert.Equal(t, "", tr.Lookup("143.198.196.44"))
+		assert.Equal(t, "2025-08-12 17:49:01 +0000 UTC", tr.Metadata().BuildDate.String())
+	}
+
+	require.NoError(t, mmdb.Load(tr, "testdata/GeoIP2-Anonymous-IP-Test.mmdb", mmdb.AnonymousIP))
+	assertTr(t, tr)
+
+	assert.Equal(t, 1120, tr.LenNodes())
+
+	tr.Minimize()
+	assertTr(t, tr)
+
+	assert.Equal(t, 684, tr.LenNodes())
+
+	require.NoError(t, tr.SaveToFile("testdata/anon.bin"))
+
+	tr2, err := netrie.LoadFromFile("testdata/anon.bin")
+	require.NoError(t, err)
+	assertTr(t, tr2)
+
+	f, err := os.Open("testdata/anon.bin")
+	require.NoError(t, err)
+	defer f.Close()
+
+	tr3, err := netrie.Open(f)
+	require.NoError(t, err)
+	assertTr(t, tr3)
+}
