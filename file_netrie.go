@@ -63,6 +63,11 @@ func (idx *CIDRIndexFile[S]) LenNames() int {
 	return int(idx.namesLen)
 }
 
+// LenNodes returns the number of nodes in the trie.
+func (idx *CIDRIndexFile[S]) LenNodes() int {
+	return int(idx.nodesLen)
+}
+
 // Lookup finds the id of the CIDR that contains the given IP string.
 // Returns "" if no matching CIDR is found or IP is invalid.
 func (idx *CIDRIndexFile[S]) Lookup(ipStr string) string {
