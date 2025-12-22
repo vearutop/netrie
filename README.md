@@ -133,23 +133,18 @@ import (
 )
 
 func main() {
-    // Open the database file
-    f, err := os.Open("large-geoip-database.bin")
-    if err != nil {
-        panic(err)
-    }
-    defer f.Close()
-    
     // Create a file-based lookup index
     // This only loads the header and names into memory, not the entire trie
-    idx, err := netrie.Open(f, func(o *netrie.Options) {
+    idx, err := netrie.OpenFile("large-geoip-database.bin", func(o *netrie.Options) {
         o.BufferSize = 8192 // Adjust buffer size for optimal performance
     })
     if err != nil {
         panic(err)
     }
-    
-    // Perform lookups - nodes will be read from disk as needed
+	defer idx.Close()
+
+
+	// Perform lookups - nodes will be read from disk as needed
     result := idx.Lookup("81.2.69.145")
     fmt.Println("81.2.69.145 is located in:", result)
     

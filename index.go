@@ -29,6 +29,7 @@ type SafeIPLookuper interface {
 	Len() int
 	LenNames() int
 	Metadata() *Metadata
+	Close() error
 }
 
 // NewCIDRLargeIndex initializes a new CIDR trie with a root node for up to 2^32 networks.

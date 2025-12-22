@@ -10,7 +10,7 @@ import (
 	"github.com/vearutop/netrie"
 )
 
-func TestLoadFromFile(t *testing.T) {
+func TestOpenFile(t *testing.T) {
 	assertTr := func(t *testing.T, tr netrie.IPLookuper) {
 		t.Helper()
 
@@ -47,9 +47,10 @@ func TestLoadFromFile(t *testing.T) {
 	require.NoError(t, err)
 	assertTr(t, tr3)
 
-	tr4, err := netrie.Open(f)
+	tr4, err := netrie.OpenFile("testdata/cities.bin")
 	require.NoError(t, err)
 	assertTr(t, tr4)
+	assert.NoError(t, tr4.Close())
 }
 
 func BenchmarkLoadMMDB_city(b *testing.B) {

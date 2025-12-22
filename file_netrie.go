@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sync"
 )
 
@@ -202,9 +203,29 @@ func (idx *CIDRIndexFile[S]) LookupIP(ip net.IP) string {
 	return name
 }
 
+// Close releases any resources associated with the CIDRIndexFile, calling Close on the underlying io.Closer if available.
+func (idx *CIDRIndexFile[S]) Close() error {
+	if c, ok := idx.r.(io.Closer); ok {
+		return c.Close()
+	}
+
+	return nil
+}
+
 // Options represents configuration options for customizing behaviors, such as buffer size for data readers.
 type Options struct {
 	BufferSize int // Default 4096.
+}
+
+// OpenFile opens a file at the specified path and parses it into a SafeIPLookuper
+// for IP lookups with optional configurations.
+func OpenFile(fn string, opts ...func(o *Options)) (SafeIPLookuper, error) {
+	f, err := os.Open(fn)
+	if err != nil {
+		return nil, err
+	}
+
+	return Open(f, opts...)
 }
 
 // Open parses a ReaderAt to load an SafeIPLookuper instance for performing IP lookups from a CIDR-based structure.
