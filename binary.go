@@ -295,7 +295,7 @@ func (idx *CIDRIndex[S]) load(h hd, r io.Reader) error {
 	return nil
 }
 
-// LoadFromFile loads the CIDRIndex from a file.
+// LoadFromFile loads the entire CIDRIndex from a file to memory.
 func LoadFromFile(filename string) (IPLookuper, error) {
 	file, err := os.Open(filename)
 	if err != nil {
