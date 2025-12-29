@@ -27,7 +27,7 @@ func AnonymousIP(o *Options) {
 				"is_residential_proxy", "is_tor_exit_node",
 			} {
 				if b, _ := RetrieveValue(v, k).(bool); b {
-					res += k + ":"
+					res += k + ";"
 				}
 			}
 
@@ -36,6 +36,20 @@ func AnonymousIP(o *Options) {
 			}
 
 			return res[:len(res)-1]
+		}
+	}
+}
+
+// ConnectionType configures the Options object to retrieve connection type from MaxMind DB records.
+func ConnectionType(o *Options) {
+	o.MakeValueName = func() (any, func() string) {
+		var v any
+		return &v, func() string {
+			// {"connection_type":"Cable/DSL"}
+
+			res, _ := RetrieveValue(v, "connection_type").(string)
+
+			return res
 		}
 	}
 }
