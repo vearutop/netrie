@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/oschwald/maxminddb-golang"
@@ -160,6 +161,10 @@ func Load(tr netrie.Adder, mmdbPath string, options ...func(o *Options)) error {
 	meta.BuildDate = time.Unix(int64(db.Metadata.BuildEpoch), 0).UTC()
 	if meta.Description == "" {
 		meta.Description = db.Metadata.Description["en"]
+	}
+
+	if meta.Name == "" {
+		meta.Name = strings.TrimSuffix(db.Metadata.Description["en"], " database")
 	}
 	meta.Extra = db.Metadata
 

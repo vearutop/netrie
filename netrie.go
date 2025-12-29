@@ -15,6 +15,7 @@ type trieNode[S int16 | int32] struct {
 // Metadata represents additional information related to a structure or process.
 type Metadata struct {
 	BuildDate   time.Time `json:"build_date,omitzero"`
+	Name        string    `json:"name,omitempty"`
 	Description string    `json:"description,omitempty"`
 	Extra       any       `json:"extra,omitempty"`
 }
