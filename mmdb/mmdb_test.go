@@ -49,6 +49,45 @@ func TestLoadMMDB_city(t *testing.T) {
 	assertTr(t, tr3)
 }
 
+func TestLoadMMDB_city_loc(t *testing.T) {
+	tr := netrie.NewCIDRIndex()
+
+	assertTr := func(t *testing.T, tr netrie.IPLookuper) {
+		t.Helper()
+		assert.Equal(t, 250, tr.Len())
+		assert.Equal(t, 59, tr.LenNames())
+		assert.Equal(t, "GB:Boxford:51.75,-1.25", tr.Lookup("2.125.160.217"))
+		assert.Equal(t, "GB:London:51.5142,-0.0931", tr.Lookup("81.2.69.145"))
+		assert.Equal(t, "US:San Diego:32.7203,-117.1552", tr.Lookup("2001:480:10::1"))
+		assert.Equal(t, "", tr.Lookup("143.198.196.44"))
+		assert.Equal(t, "2025-08-12 17:49:01 +0000 UTC", tr.Metadata().BuildDate.String())
+	}
+
+	require.NoError(t, mmdb.Load(tr, "testdata/GeoIP2-City-Test.mmdb", mmdb.CityCountryISOCodeLoc))
+	assertTr(t, tr)
+
+	assert.Equal(t, 1486, tr.LenNodes())
+
+	tr.Minimize()
+	assertTr(t, tr)
+
+	assert.Equal(t, 769, tr.LenNodes())
+
+	require.NoError(t, tr.SaveToFile("testdata/cities.bin"))
+
+	tr2, err := netrie.LoadFromFile("testdata/cities.bin")
+	require.NoError(t, err)
+	assertTr(t, tr2)
+
+	f, err := os.Open("testdata/cities.bin")
+	require.NoError(t, err)
+	defer f.Close()
+
+	tr3, err := netrie.Open(f)
+	require.NoError(t, err)
+	assertTr(t, tr3)
+}
+
 func TestLoadMMDB_country(t *testing.T) {
 	tr := netrie.NewCIDRIndex()
 

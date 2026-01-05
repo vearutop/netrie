@@ -3,6 +3,7 @@ package mmdb
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -109,6 +110,34 @@ func CityCountryISOCode(o *Options) {
 			}
 
 			return isoCode + ":" + cityName
+		}
+	}
+}
+
+// CityCountryISOCodeLoc configures the Options to generate value names in the format "ISOCode:CityName:Lat,Lon" from records.
+func CityCountryISOCodeLoc(o *Options) {
+	o.MakeValueName = func() (any, func() string) {
+		var v any
+		return &v, func() string {
+			cityName, _ := RetrieveValue(v, "city", "names", "en").(string)
+			if cityName == "" {
+				cityName = "Unknown"
+			}
+
+			isoCode, _ := RetrieveValue(v, "country", "iso_code").(string)
+
+			if isoCode == "" {
+				isoCode, _ = RetrieveValue(v, "country", "iso_code").(string)
+			}
+
+			if isoCode == "" {
+				isoCode = "??"
+			}
+
+			lat, _ := RetrieveValue(v, "location", "latitude").(float64)
+			lon, _ := RetrieveValue(v, "location", "longitude").(float64)
+
+			return isoCode + ":" + cityName + ":" + fmt.Sprintf("%g,%g", lat, lon)
 		}
 	}
 }
