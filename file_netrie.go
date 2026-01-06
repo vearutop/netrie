@@ -129,6 +129,10 @@ func (idx *CIDRIndexFile[S]) readNode(r io.ReaderAt, id int64, b []byte) (trieNo
 // LookupIP finds the id of the CIDR that contains the given IP.
 // Returns "" if no matching CIDR is found.
 func (idx *CIDRIndexFile[S]) lookupIP(ip net.IP) (string, error) {
+	if ip == nil {
+		return "", nil
+	}
+
 	idx.mu.Lock()
 	defer idx.mu.Unlock()
 

@@ -84,6 +84,10 @@ func (idx *CIDRIndex[S]) AddNet(ipNet *net.IPNet, name string) {
 // LookupIP finds the id of the CIDR that contains the given IP.
 // Returns "" if no matching CIDR is found.
 func (idx *CIDRIndex[S]) LookupIP(ip net.IP) string {
+	if ip == nil {
+		return ""
+	}
+
 	// Convert to 16-byte representation, handling IPv4.
 	if ip4 := ip.To4(); ip4 != nil {
 		ip = ip4
