@@ -175,7 +175,7 @@ func main() {
     idx := netrie.NewCIDRIndex()
     
     // Load from MaxMind GeoIP City database with city and country information
-    err := mmdb.LoadMMDB(idx, "GeoIP2-City.mmdb", mmdb.CityCountryISOCode)
+    err := mmdb.Load(idx, "GeoIP2-City.mmdb", mmdb.CityCountryISOCode)
     if err != nil {
         panic(err)
     }
@@ -198,7 +198,7 @@ func main() {
     asnIdx.Metadata().Description = "ASN Database"
     
     // Load from MaxMind GeoIP ASN database
-    err = mmdb.LoadMMDB(asnIdx, "GeoLite2-ASN.mmdb", mmdb.ASNOrg)
+    err = mmdb.Load(asnIdx, "GeoLite2-ASN.mmdb", mmdb.ASNOrg)
     if err != nil {
         panic(err)
     }
