@@ -206,7 +206,7 @@ func (idx *CIDRIndexFile[S]) SafeLookupIP(ip net.IP) (string, error) {
 func (idx *CIDRIndexFile[S]) LookupIP(ip net.IP) string {
 	name, err := idx.lookupIP(ip)
 	if err != nil {
-		panic(err)
+		return "error: " + err.Error()
 	}
 
 	return name
@@ -228,7 +228,7 @@ type Options struct {
 
 // OpenFile opens a file at the specified path and parses it into a SafeIPLookuper
 // for IP lookups with optional configurations.
-func OpenFile(fn string, opts ...func(o *Options)) (SafeIPLookuper, error) {
+func OpenFile(fn string, opts ...func(o *Options)) (IPLookuper, error) {
 	f, err := os.Open(fn)
 	if err != nil {
 		return nil, err
@@ -239,7 +239,7 @@ func OpenFile(fn string, opts ...func(o *Options)) (SafeIPLookuper, error) {
 
 // Open parses a ReaderAt to load an SafeIPLookuper instance for performing IP lookups from a CIDR-based structure.
 // Returns the constructed SafeIPLookuper and an error if any issue occurs during parsing or initialization.
-func Open(r io.ReaderAt, opts ...func(o *Options)) (SafeIPLookuper, error) {
+func Open(r io.ReaderAt, opts ...func(o *Options)) (IPLookuper, error) {
 	o := Options{}
 	o.BufferSize = 4096
 
