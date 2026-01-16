@@ -45,6 +45,11 @@ func (idx *CIDRIndex[S]) AddNet(ipNet *net.IPNet, name string) {
 	if id == 0 {
 		idx.names = append(idx.names, name)
 		id = S(len(idx.names))
+
+		if int32(id) != int32(len(idx.names)) {
+			panic("too many names, use netrie.NewCIDRLargeIndex")
+		}
+
 		idx.idByName[name] = id
 	}
 

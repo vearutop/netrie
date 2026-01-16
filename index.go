@@ -7,22 +7,19 @@ import (
 
 // Adder is an interface for adding IP networks or CIDR ranges to a data structure with associated names.
 type Adder interface {
+	// AddNet adds an IP network (CIDR) to the implementing data structure with an associated name.
 	AddNet(ipNet *net.IPNet, name string)
+
+	// AddCIDR adds a string representation of a CIDR block with an associated name to the implementing data structure.
+	// Returns an error if the CIDR string is invalid or cannot be added.
 	AddCIDR(cidr string, name string) error
+
+	// Metadata returns the metadata associated with the implementing data structure or process.
 	Metadata() *Metadata
 }
 
 // IPLookuper defines methods to lookup and retrieve information for a given IP or IP string from a CIDR-based structure.
 type IPLookuper interface {
-	LookupIP(ip net.IP) string
-	Lookup(ipStr string) string
-	Len() int
-	LenNames() int
-	Metadata() *Metadata
-}
-
-// SafeIPLookuper defines methods to lookup and retrieve information for a given IP or IP string from a CIDR-based structure.
-type SafeIPLookuper interface {
 	SafeLookupIP(ip net.IP) (string, error)
 	LookupIP(ip net.IP) string
 	Lookup(ipStr string) string
@@ -84,4 +81,15 @@ func (idx *CIDRIndex[S]) Lookup(ipStr string) string {
 	}
 
 	return idx.LookupIP(ip)
+}
+
+// SafeLookupIP attempts to find the CIDR name associated with the given IP and returns it alongside a nil error.
+// Returns an empty string and a nil error if no matching CIDR is found.
+func (idx *CIDRIndex[S]) SafeLookupIP(ip net.IP) (string, error) {
+	return idx.LookupIP(ip), nil
+}
+
+// Close is a no op.
+func (idx *CIDRIndex[S]) Close() error {
+	return nil
 }

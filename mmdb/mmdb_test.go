@@ -11,7 +11,7 @@ import (
 )
 
 func TestLoadMMDB_city(t *testing.T) {
-	tr := netrie.NewCIDRIndex()
+	tr := netrie.NewCIDRLargeIndex()
 
 	assertTr := func(t *testing.T, tr netrie.IPLookuper) {
 		t.Helper()
